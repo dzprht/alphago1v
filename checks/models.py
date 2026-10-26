@@ -25,6 +25,7 @@ class Check(models.Model):
     input_data = models.JSONField(default=dict)
     extracted_text = models.TextField(blank=True)
     result = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(blank=True, default="")
     context_snapshot = models.JSONField(default=dict, blank=True)
     analyzer_version = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
