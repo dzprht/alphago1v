@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "accounts",
     "checks",
+    "transactions",
 ]
 
 MIDDLEWARE = [

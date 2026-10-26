@@ -1,0 +1,4 @@
+occurred_at;amount;direction;recipient
+2026-10-20T14:30:00+03:00;1500.50;outgoing;shop_1
+2026-10-21T09:00:00+03:00;30000.00;incoming;employer
+2026-10-22T18:15:00+03:00;800.00;outgoing;

@@ -1,6 +1,6 @@
 **Объектные и классовые диаграммы «Альфа Защиты»**
 
-**Статус:** проектирование с гостевым режимом, 26 октября 2026 года. Диаграммы соответствуют [семи сценариям](kharchenko_userscripts.md) и [спецификации](SPECIFICATION.md). Основа Django, логика аккаунтов, хранилище и серверные формы проверок подготовлены; анализ и HTTP-обработчики пока не реализованы. Все экземпляры и значения в объектных схемах условные.
+**Статус:** проектирование с гостевым режимом, CSV уточнен 27 октября 2026 года. Диаграммы соответствуют [семи сценариям](kharchenko_userscripts.md) и [спецификации](SPECIFICATION.md). Основа Django, логика аккаунтов, хранение и завершение проверок, серверные формы и импорт CSV подготовлены; анализ и HTTP-обработчики пока не реализованы. Все экземпляры и значения в объектных схемах условные.
 
 **Как читать схемы**
 
@@ -260,14 +260,17 @@ classDiagram
         +int id
         +datetime created_at
         +int row_count
+        +datetime period_start
+        +datetime period_end
+        +str file_sha256
     }
     class Transaction {
         +int id
         +datetime occurred_at
-        +int amount_minor
+        +int amount_kopecks
         +str currency
         +str direction
-        +str counterparty_id
+        +str recipient
     }
     class Check {
         +int id
@@ -276,9 +279,10 @@ classDiagram
         +str analyzer_version
     }
     class TransactionService {
-        +validate_csv(file)
-        +replace_history(user, rows)
-        +get_history(user)
+        +read_transactions_csv(file)
+        +import_transactions(user, file)
+        +get_user_transactions(user, before)
+        +delete_user_transactions(user)
     }
     class AnalysisService {
         +analyze_transfer(input_data, history)
@@ -288,7 +292,7 @@ classDiagram
         +create_check(user, kind, input_data)
     }
     class Guest
-    User "1" --> "0..*" TransactionImport : владеет
+    User "1" --> "0..1" TransactionImport : владеет активной загрузкой
     TransactionImport "1" --> "0..*" Transaction : содержит
     User "1" --> "0..*" Check : владеет сохранёнными
     Guest ..> CheckService : без CSV и истории
