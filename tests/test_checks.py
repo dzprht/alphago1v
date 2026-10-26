@@ -1,6 +1,6 @@
 import pytest
 from django.contrib.auth.models import AnonymousUser
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.http import Http404
 
@@ -45,19 +45,56 @@ def test_checks_are_only_visible_to_owner():
         get_user_check(user, other.pk + 1)
 
 
-def test_anonymous_user_cannot_access_checks():
-    # проверяет запрет доступа без входа
+def test_anonymous_user_cannot_access_saved_checks():
+    # проверяет запрет доступа к истории без входа
     owner = User.objects.create_user(username="anna")
     check = create_check(owner, Check.Kind.TEXT, {"text": "Сообщение"})
     anonymous = AnonymousUser()
 
-    with pytest.raises(PermissionDenied):
-        create_check(anonymous, Check.Kind.TEXT, {"text": "Другое сообщение"})
+    guest_check = create_check(anonymous, Check.Kind.TEXT, {"text": "Другое сообщение"})
+    assert guest_check.pk is None
     with pytest.raises(PermissionDenied):
         get_user_checks(anonymous)
     with pytest.raises(PermissionDenied):
         get_user_check(anonymous, check.pk)
     assert Check.objects.count() == 1
+
+
+@pytest.mark.parametrize(
+    ("kind", "data"),
+    [
+        (Check.Kind.TEXT, {"text": "Сообщение"}),
+        (Check.Kind.URL, {"url": "https://example.com"}),
+        (Check.Kind.AUDIO, {"filename": "message.wav"}),
+        (Check.Kind.SCREENSHOT, {"filename": "chat.png"}),
+        (Check.Kind.TRANSFER, {"amount": 1500, "purpose": "неизвестно"}),
+    ],
+)
+def test_guest_check_is_not_saved(kind, data):
+    # проверяет создание гостевой проверки без записи в базу
+    check = create_check(AnonymousUser(), kind, data)
+
+    assert check.pk is None
+    assert check.user_id is None
+    assert check.input_data == data
+    assert check.kind == kind
+    assert check.created_at is not None
+    assert check.status == Check.Status.PENDING
+    assert check.result is None
+    assert Check.objects.count() == 0
+    assert check.context_snapshot == {}
+    assert User.objects.count() == 0
+
+
+@pytest.mark.parametrize(
+    ("kind", "data"),
+    [("unknown", {"text": "Сообщение"}), (Check.Kind.TEXT, ["Сообщение"])],
+)
+def test_guest_check_requires_valid_data(kind, data):
+    # проверяет ошибки гостевого ввода
+    with pytest.raises(ValidationError):
+        create_check(AnonymousUser(), kind, data)
+    assert Check.objects.count() == 0
 
 
 @pytest.mark.parametrize("field", ["kind", "status"])

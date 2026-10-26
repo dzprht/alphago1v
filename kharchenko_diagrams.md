@@ -1,12 +1,16 @@
 **Объектные и классовые диаграммы «Альфа Защиты»**
 
-**Статус:** проектирование, 25 октября 2026 года. Диаграммы соответствуют [семи сценариям](kharchenko_userscripts.md) и [спецификации](SPECIFICATION.md). Приложение и изображённые классы пока не реализованы. Все экземпляры и значения в объектных схемах условные.
+**Статус:** проектирование с гостевым режимом, 26 октября 2026 года. Диаграммы соответствуют [семи сценариям](kharchenko_userscripts.md) и [спецификации](SPECIFICATION.md). Основа Django, логика аккаунтов и хранилище проверок подготовлены; анализ, HTTP-обработчики и формы описанных проверок пока не реализованы. Все экземпляры и значения в объектных схемах условные.
 
 **Как читать схемы**
 
 Для каждого сценария приведены объектная схема и UML-диаграмма классов, как требует Word-гайд (§4–5). UML показывает только нужную сценарию часть сущностей. Сервисы обозначают проектные роли и операции, а не обязанность создавать отдельный класс для каждой функции.
 
-`Check` хранит исходные сведения, снимок результата и версию анализа; для аудио и скриншота также сохраняется извлечённый текст. Исходные медиа обрабатываются временно. `CheckFeedback` хранит редактируемый непроверенный отзыв отдельно от прогноза. История транзакций и история проверок — разные данные.
+`Check` содержит исходные сведения, снимок результата и версию анализа; для аудио и скриншота также извлечённый текст. Для вошедшего пользователя эти сведения сохраняются в БД, для гостя доступны только на текущем экране и могут потеряться после закрытия или перезагрузки страницы. Исходные медиа обрабатываются временно. `CheckFeedback` хранит редактируемый непроверенный отзыв к сохранённой проверке отдельно от прогноза. История транзакций и история проверок — разные данные; CSV, история и отзывы доступны только после входа.
+
+**Гостевой объект и сохранённая запись**
+
+`create_check(user, kind, input_data)` возвращает гостю несохранённый объект `Check`: `user_id=None`, `pk=None`, `created_at` — текущее время. Общая валидация сохраняется; для гостя `full_clean` исключает только поле `user`. В БД `Check.user` остаётся обязательным (`NOT NULL`), миграция не нужна. Связь `User → Check` на всех диаграммах относится только к сохранённым записям. `Guest` обозначает посетителя без входа, а не новую таблицу или аккаунт. Метод создания подготавливает проверку; обработка и завершение с записью результата будут отдельными операциями.
 
 **S01. Аккаунт и история с другого устройства — F01, F08**
 
@@ -58,7 +62,10 @@ classDiagram
 ```mermaid
 flowchart LR
     user["u01: User"] -->|передаёт текст и контекст| service["checks02: сервис проверок"]
-    service -->|создаёт| check["c02: Check; type=text"]
+    guest["g02: Guest"] -->|передаёт текст и контекст| service
+    service -->|для вошедшего сохраняет| check["c02: Check; type=text; сохранён"]
+    service -->|для гостя без записи в БД| guestcheck["gc02: Check; user_id=None; pk=None"]
+    guestcheck -->|показывает| screen["screen02: только текущий экран"]
     user -->|владеет| check
     check -->|хранит| result["result02: оценка, объяснения, ограничения"]
 ```
@@ -80,11 +87,13 @@ classDiagram
         +analyze_text(text, context)
     }
     class CheckService {
-        +save_result(user, input_data, result)
+        +create_check(user, kind, input_data)
     }
-    User "1" --> "0..*" Check : владеет
+    class Guest
+    User "1" --> "0..*" Check : владеет сохранёнными
+    Guest ..> CheckService : без входа
     CheckService ..> AnalysisService : получает оценку
-    CheckService ..> Check : сохраняет
+    CheckService ..> Check : сохраняет только для вошедшего
 ```
 
 **S03. Ссылка — F03**
@@ -94,7 +103,10 @@ classDiagram
 ```mermaid
 flowchart LR
     user["u01: User"] -->|URL, сообщение, ожидаемый сайт, контекст| service["checks03: сервис проверок"]
-    service -->|создаёт| check["c03: Check; type=url"]
+    guest["g03: Guest"] -->|URL и необязательный контекст| service
+    service -->|для вошедшего сохраняет| check["c03: Check; type=url; сохранён"]
+    service -->|для гостя без записи в БД| guestcheck["gc03: Check; user_id=None; pk=None"]
+    guestcheck -->|показывает| screen["screen03: только текущий экран"]
     user -->|владеет| check
     check -->|хранит| result["result03: признаки URL и рекомендации"]
 ```
@@ -116,11 +128,13 @@ classDiagram
         +analyze_url(url, message, expected_site, context)
     }
     class CheckService {
-        +save_result(user, input_data, result)
+        +create_check(user, kind, input_data)
     }
-    User "1" --> "0..*" Check : владеет
+    class Guest
+    User "1" --> "0..*" Check : владеет сохранёнными
+    Guest ..> CheckService : без входа
     CheckService ..> AnalysisService : получает оценку
-    CheckService ..> Check : сохраняет
+    CheckService ..> Check : сохраняет только для вошедшего
 ```
 
 **S04. Аудиозапись — F04**
@@ -130,9 +144,13 @@ classDiagram
 ```mermaid
 flowchart LR
     user["u01: User"] -->|загружает| audio["audio04: временный аудиофайл"]
+    guest["g04: Guest"] -->|загружает| audio
     audio -->|передан для обработки| service["checks04: сервис проверок"]
     user -->|участники и контекст| service
-    service -->|создаёт| check["c04: Check; type=audio"]
+    guest -->|участники и контекст| service
+    service -->|для вошедшего сохраняет| check["c04: Check; type=audio; сохранён"]
+    service -->|для гостя без записи в БД| guestcheck["gc04: Check; user_id=None; pk=None; извлечённый текст"]
+    guestcheck -->|показывает| screen["screen04: только текущий экран"]
     user -->|владеет| check
     check -->|хранит| text["text04: извлечённый текст"]
     check -->|хранит| result["result04: оценка и ограничения распознавания"]
@@ -156,11 +174,13 @@ classDiagram
         +analyze_audio(file, participants, context)
     }
     class CheckService {
-        +save_result(user, input_data, result)
+        +create_check(user, kind, input_data)
     }
-    User "1" --> "0..*" Check : владеет
+    class Guest
+    User "1" --> "0..*" Check : владеет сохранёнными
+    Guest ..> CheckService : без входа
     CheckService ..> AnalysisService : передаёт временный файл
-    CheckService ..> Check : сохраняет текст и результат
+    CheckService ..> Check : сохраняет только для вошедшего
 ```
 
 **S05. Скриншот переписки — F05**
@@ -170,9 +190,13 @@ classDiagram
 ```mermaid
 flowchart LR
     user["u01: User"] -->|загружает| image["image05: временное изображение"]
+    guest["g05: Guest"] -->|загружает| image
     image -->|передано для обработки| service["checks05: сервис проверок"]
     user -->|свои реплики и контекст| service
-    service -->|создаёт| check["c05: Check; type=screenshot"]
+    guest -->|свои реплики и контекст| service
+    service -->|для вошедшего сохраняет| check["c05: Check; type=screenshot; сохранён"]
+    service -->|для гостя без записи в БД| guestcheck["gc05: Check; user_id=None; pk=None; извлечённый текст"]
+    guestcheck -->|показывает| screen["screen05: только текущий экран"]
     user -->|владеет| check
     check -->|хранит| text["text05: извлечённая переписка"]
     check -->|хранит| result["result05: оценка и ограничения чтения"]
@@ -196,11 +220,13 @@ classDiagram
         +analyze_screenshot(file, own_messages, context)
     }
     class CheckService {
-        +save_result(user, input_data, result)
+        +create_check(user, kind, input_data)
     }
-    User "1" --> "0..*" Check : владеет
+    class Guest
+    User "1" --> "0..*" Check : владеет сохранёнными
+    Guest ..> CheckService : без входа
     CheckService ..> AnalysisService : передаёт временный файл
-    CheckService ..> Check : сохраняет текст и результат
+    CheckService ..> Check : сохраняет только для вошедшего
 ```
 
 **S06. CSV и предполагаемый перевод — F06, F07**
@@ -212,13 +238,16 @@ flowchart LR
     user["u01: User"] -->|владеет| import["i06: TransactionImport; текущая загрузка"]
     import -->|содержит| transaction["t06: Transaction; amount_minor=150000; RUB"]
     user -->|сумма, назначение, контекст| service["checks06: сервис проверок"]
-    transaction -->|контекст при наличии истории| service
-    service -->|создаёт| check["c06: Check; type=transfer"]
+    guest["g06: Guest"] -->|только введённые сведения| service
+    transaction -->|контекст только для вошедшего владельца| service
+    service -->|для вошедшего сохраняет| check["c06: Check; type=transfer; сохранён"]
+    service -->|для гостя без истории и записи в БД| guestcheck["gc06: Check; user_id=None; pk=None"]
+    guestcheck -->|показывает| screen["screen06: только текущий экран"]
     user -->|владеет| check
     check -->|хранит| result["result06: оценка и снимок использованных сведений"]
 ```
 
-Без загруженной истории экземпляры `i06` и `t06` отсутствуют; проверка выполняется по введённым сведениям с указанием ограничений. Ошибка нового импорта не меняет прежнюю историю.
+Для гостя экземпляры `i06` и `t06` недоступны; проверка выполняется только по введённым сведениям с указанием ограничений. Вошедший пользователь также может выполнить проверку без истории. Ошибка нового импорта не меняет прежнюю историю.
 
 **UML классов**
 
@@ -256,15 +285,18 @@ classDiagram
     }
     class CheckService {
         +run_transfer_check(user, input_data)
+        +create_check(user, kind, input_data)
     }
+    class Guest
     User "1" --> "0..*" TransactionImport : владеет
     TransactionImport "1" --> "0..*" Transaction : содержит
-    User "1" --> "0..*" Check : владеет
+    User "1" --> "0..*" Check : владеет сохранёнными
+    Guest ..> CheckService : без CSV и истории
     TransactionService ..> TransactionImport : заменяет текущую историю
     TransactionService ..> Transaction : проверяет и сохраняет
-    CheckService ..> TransactionService : получает доступную историю
+    CheckService ..> TransactionService : только для вошедшего владельца
     CheckService ..> AnalysisService : передаёт сведения и историю
-    CheckService ..> Check : сохраняет результат
+    CheckService ..> Check : сохраняет только для вошедшего
 ```
 
 Сумма хранится в целых минимальных денежных единицах, для рублей — копейках. Назначение и обстоятельства предполагаемого перевода относятся к `Check.input_data`, а не добавляются в CSV только ради этой схемы. Сохранённый результат не зависит от последующей замены истории.
@@ -310,5 +342,7 @@ classDiagram
     FeedbackService ..> Check : проверяет владельца
     FeedbackService ..> CheckFeedback : сохраняет и исправляет
 ```
+
+Сценарий доступен только после входа и только для своей сохранённой проверки. У гостевого несохранённого `Check` отзыва нет; доступ к чужой сохранённой проверке закрыт.
 
 `outcome` принимает `fraud`, `ordinary` или `unknown`: мошенничество, обычная ситуация или неизвестно. Отзыв остаётся непроверенным и не меняет исходный прогноз. Разрешение на использование данных конкретной проверки для подготовки будущего обучения по умолчанию выключено и учитывается отдельно от отзыва; способ его хранения определяется спецификацией. Наличие разрешения не означает проверенную разметку или выполненное обучение. Операции обучения в этот сценарий не входят.
