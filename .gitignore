@@ -1,0 +1,14 @@
+*.docx
+idea.md
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+var/
+.DS_Store
+/AGENTS.md
+/.serena/
+/docs/backend_*.md
