@@ -4,7 +4,10 @@ from django import forms
 from django.core.files import File
 from django.core.validators import URLValidator
 
-from checks.models import Check
+from checks.models import Check, CheckFeedback
+
+
+TRAINING_CONSENT_VERSION = "2026-10-28"
 
 
 class CheckForm(forms.Form):
@@ -93,3 +96,27 @@ class TransferCheckForm(CheckForm):
         data = super().get_input_data()
         data["amount_kopecks"] = int(data.pop("amount") * 100)
         return data
+
+
+class CheckFeedbackForm(forms.Form):
+    outcome = forms.ChoiceField(
+        label="Чем закончилась ситуация",
+        choices=[("", "Выберите исход"), *CheckFeedback.Outcome.choices],
+    )
+    comment = forms.CharField(
+        label="Комментарий", required=False, widget=forms.Textarea
+    )
+
+
+class TrainingConsentForm(forms.Form):
+    granted = forms.BooleanField(
+        label="Разрешаю использовать данные этой проверки и мой отзыв "
+        "для подготовки будущего обучения после ручной проверки данных",
+        required=False,
+        initial=False,
+    )
+    terms_version = forms.ChoiceField(
+        choices=[(TRAINING_CONSENT_VERSION, TRAINING_CONSENT_VERSION)],
+        initial=TRAINING_CONSENT_VERSION,
+        widget=forms.HiddenInput,
+    )

@@ -4,7 +4,12 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from checks.models import Check
+from checks.forms import (
+    TRAINING_CONSENT_VERSION,
+    CheckFeedbackForm,
+    TrainingConsentForm,
+)
+from checks.models import Check, CheckFeedback, TrainingConsent
 
 
 def create_check(user, kind, input_data):
@@ -107,3 +112,45 @@ def get_user_checks(user):
 def get_user_check(user, check_id):
     # возвращает свою проверку по номеру
     return get_object_or_404(get_user_checks(user), pk=check_id)
+
+
+def save_check_feedback(user, check_id, data):
+    # сохраняет или исправляет отзыв о своей проверке
+    check = get_user_check(user, check_id)
+    if check.status != Check.Status.COMPLETED:
+        raise ValidationError("Отзыв можно оставить только к готовому результату")
+    form = CheckFeedbackForm(data=data)
+    if form.is_valid():
+        CheckFeedback.objects.update_or_create(check_record=check, defaults=form.cleaned_data)
+    return form
+
+
+def get_check_feedback(user, check_id):
+    # возвращает отзыв только к своей проверке
+    check = get_user_check(user, check_id)
+    return CheckFeedback.objects.filter(check_record=check).first()
+
+
+def save_training_consent(user, check_id, data):
+    # сохраняет отдельное решение об использовании данных проверки
+    check = get_user_check(user, check_id)
+    if check.status != Check.Status.COMPLETED:
+        raise ValidationError("Согласие можно изменить только для готового результата")
+    form = TrainingConsentForm(data=data)
+    if form.is_valid():
+        TrainingConsent.objects.update_or_create(
+            check_record=check,
+            defaults={
+                "granted": form.cleaned_data["granted"],
+                "terms_version": TRAINING_CONSENT_VERSION,
+            },
+        )
+    return form
+
+
+def has_training_consent(user, check_id):
+    # проверяет согласие на текущие условия для своей проверки
+    check = get_user_check(user, check_id)
+    return TrainingConsent.objects.filter(
+        check_record=check, granted=True, terms_version=TRAINING_CONSENT_VERSION
+    ).exists()

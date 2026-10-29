@@ -43,3 +43,34 @@ class Check(models.Model):
                 name="check_status_valid",
             ),
         ]
+
+
+class CheckFeedback(models.Model):
+    class Outcome(models.TextChoices):
+        FRAUD = "fraud", "Мошенничество"
+        ORDINARY = "ordinary", "Обычная ситуация"
+        UNKNOWN = "unknown", "Неизвестно"
+
+    check_record = models.OneToOneField(
+        Check, on_delete=models.CASCADE, related_name="feedback"
+    )
+    outcome = models.CharField(max_length=8, choices=Outcome.choices)
+    comment = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(outcome__in=["fraud", "ordinary", "unknown"]),
+                name="feedback_outcome_valid",
+            ),
+        ]
+
+
+class TrainingConsent(models.Model):
+    check_record = models.OneToOneField(
+        Check, on_delete=models.CASCADE, related_name="training_consent"
+    )
+    granted = models.BooleanField(default=False)
+    terms_version = models.CharField(max_length=20)
+    updated_at = models.DateTimeField(auto_now=True)
