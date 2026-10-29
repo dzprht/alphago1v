@@ -11,6 +11,7 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.forms import RegistrationForm
 from accounts.models import LoginAttempt, User
 from accounts.views import LOGIN_FAILURE_LIMIT, LOGIN_FAILURE_WINDOW
 
@@ -81,7 +82,7 @@ def test_register_login_profile_and_logout_with_csrf():
     assert response.status_code == 302
     assert response.url == profile_url
     assert client.get(profile_url).context["user"].pk == user.pk
-    assert LoginAttempt.objects.get().failures == 0
+    assert LoginAttempt.objects.get().failures == 1
     old_session_key = client.session.session_key
 
     assert client.get(logout_url).status_code == 405
@@ -109,6 +110,30 @@ def test_invalid_registration_shows_errors_without_saving(client):
     assert "password2" in response.context["form"].errors
     assert PASSWORD not in response.content.decode()
     assert User.objects.count() == 0
+
+
+def test_registration_collision_shows_username_error(client, monkeypatch):
+    # проверяет понятную ошибку при занятом перед сохранением логине
+    original_is_valid = RegistrationForm.is_valid
+
+    def validate_then_create_competing_user(form):
+        # имитирует чужую регистрацию после проверки формы
+        valid = original_is_valid(form)
+        if valid:
+            User.objects.create_user(username="ANNA")
+        return valid
+
+    monkeypatch.setattr(RegistrationForm, "is_valid", validate_then_create_competing_user)
+    response = client.post(
+        reverse("accounts:register"),
+        {"username": "anna", "password1": PASSWORD, "password2": PASSWORD},
+    )
+
+    assert response.status_code == 200
+    assert "username" in response.context["form"].errors
+    assert User.objects.count() == 1
+    assert User.objects.get().username == "ANNA"
+    assert SESSION_KEY not in client.session
 
 
 @pytest.mark.parametrize("name", ["register", "login", "logout"])
@@ -149,6 +174,33 @@ def test_login_limit_blocks_password_check_without_extending_window(client):
     attempt.refresh_from_db()
     assert attempt.failures == LOGIN_FAILURE_LIMIT
     assert attempt.window_started_at == original_start
+
+
+def test_own_login_does_not_reset_failed_attempts_for_another_account(client):
+    # проверяет что свой аккаунт не позволяет обойти лимит ошибок
+    User.objects.create_user(username="victim", password=PASSWORD)
+    attacker = User.objects.create_user(username="attacker", password=PASSWORD)
+    login_url = reverse("accounts:login")
+    wrong_credentials = {"username": "victim", "password": "wrong"}
+
+    for _ in range(LOGIN_FAILURE_LIMIT - 1):
+        assert client.post(login_url, wrong_credentials).status_code == 200
+    attempt = LoginAttempt.objects.get()
+    original_start = attempt.window_started_at
+
+    response = client.post(login_url, {"username": "attacker", "password": PASSWORD})
+    assert response.status_code == 302
+    assert client.session[SESSION_KEY] == str(attacker.pk)
+    assert client.post(reverse("accounts:logout")).status_code == 302
+    attempt.refresh_from_db()
+    assert attempt.failures == LOGIN_FAILURE_LIMIT - 1
+    assert attempt.window_started_at == original_start
+
+    assert client.post(login_url, wrong_credentials).status_code == 200
+    attempt.refresh_from_db()
+    assert attempt.failures == LOGIN_FAILURE_LIMIT
+    assert client.post(login_url, wrong_credentials).status_code == 429
+    assert SESSION_KEY not in client.session
 
 
 def test_login_limit_expires_and_ignores_forwarded_ip(client):

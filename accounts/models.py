@@ -1,10 +1,14 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models.functions import Upper
 from django.utils import timezone
 
 
 class User(AbstractUser):
-    pass
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            models.UniqueConstraint(Upper("username"), name="user_username_upper_unique"),
+        ]
 
 
 class LoginAttempt(models.Model):

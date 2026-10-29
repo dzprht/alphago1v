@@ -4,7 +4,7 @@ from math import ceil
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -29,8 +29,16 @@ def register_view(request):
         return redirect("accounts:profile")
     form = RegistrationForm(data=request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        return redirect("accounts:login")
+        try:
+            with transaction.atomic():
+                form.save()
+        except IntegrityError as error:
+            constraint = error.__cause__.diag.constraint_name
+            if constraint not in {"user_username_upper_unique", "accounts_user_username_key"}:
+                raise
+            form.add_error("username", "Этот логин уже занят")
+        else:
+            return redirect("accounts:login")
     return render(request, "accounts/register.html", {"form": form})
 
 
@@ -59,9 +67,7 @@ def login_view(request):
             retry_after = max(1, ceil(remaining.total_seconds()))
         else:
             form = login_user(request, request.POST)
-            if form.is_valid():
-                attempt.failures = 0
-            else:
+            if not form.is_valid():
                 if attempt.failures == 0:
                     attempt.window_started_at = now
                 attempt.failures += 1

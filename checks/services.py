@@ -111,7 +111,8 @@ def get_user_checks(user):
 
 def get_user_check(user, check_id):
     # возвращает свою проверку по номеру
-    return get_object_or_404(get_user_checks(user), pk=check_id)
+    checks = get_user_checks(user).select_related("feedback", "training_consent")
+    return get_object_or_404(checks, pk=check_id)
 
 
 def save_check_feedback(user, check_id, data):
@@ -128,7 +129,7 @@ def save_check_feedback(user, check_id, data):
 def get_check_feedback(user, check_id):
     # возвращает отзыв только к своей проверке
     check = get_user_check(user, check_id)
-    return CheckFeedback.objects.filter(check_record=check).first()
+    return getattr(check, "feedback", None)
 
 
 def save_training_consent(user, check_id, data):
@@ -148,9 +149,16 @@ def save_training_consent(user, check_id, data):
     return form
 
 
+def consent_is_current(consent):
+    # проверяет согласие на текущие условия
+    return (
+        consent is not None
+        and consent.granted
+        and consent.terms_version == TRAINING_CONSENT_VERSION
+    )
+
+
 def has_training_consent(user, check_id):
     # проверяет согласие на текущие условия для своей проверки
     check = get_user_check(user, check_id)
-    return TrainingConsent.objects.filter(
-        check_record=check, granted=True, terms_version=TRAINING_CONSENT_VERSION
-    ).exists()
+    return consent_is_current(getattr(check, "training_consent", None))

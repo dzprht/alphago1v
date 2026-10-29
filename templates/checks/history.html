@@ -1,15 +1,8 @@
-<!doctype html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>История проверок</title>
-</head>
-<body>
-    <nav>
-        <a href="{% url 'accounts:profile' %}">Аккаунт</a>
-        <a href="{% url 'transactions:history' %}">История операций</a>
-    </nav>
+{% extends "base.html" %}
+
+{% block title %}История проверок{% endblock %}
+
+{% block content %}
     <h1>История проверок</h1>
     <ul>
         {% for check in checks %}
@@ -21,5 +14,4 @@
         <li>Проверок пока нет</li>
         {% endfor %}
     </ul>
-</body>
-</html>
+{% endblock %}

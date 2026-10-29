@@ -65,9 +65,9 @@ def test_anonymous_user_cannot_access_saved_checks():
     [
         (Check.Kind.TEXT, {"text": "Сообщение"}),
         (Check.Kind.URL, {"url": "https://example.com"}),
-        (Check.Kind.AUDIO, {"filename": "message.wav"}),
-        (Check.Kind.SCREENSHOT, {"filename": "chat.png"}),
-        (Check.Kind.TRANSFER, {"amount": 1500, "purpose": "неизвестно"}),
+        (Check.Kind.AUDIO, {"audio": {"name": "message.wav", "size": 5}}),
+        (Check.Kind.SCREENSHOT, {"image": {"name": "chat.png", "size": 5}}),
+        (Check.Kind.TRANSFER, {"amount_kopecks": 150000, "purpose": "unknown"}),
     ],
 )
 def test_guest_check_is_not_saved(kind, data):

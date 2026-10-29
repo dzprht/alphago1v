@@ -12,6 +12,7 @@ from checks.services import (
     save_check_feedback,
     save_training_consent,
 )
+from checks.views import detail_view
 
 
 pytestmark = pytest.mark.django_db
@@ -62,6 +63,23 @@ def test_empty_history_has_clear_message(client):
 
     assert response.status_code == 200
     assert "Проверок пока нет" in response.content.decode()
+
+
+def test_detail_reads_check_and_related_data_once(rf, saved_check, django_assert_num_queries):
+    # проверяет чтение проверки с отзывом и согласием одним запросом
+    check = saved_check
+    save_check_feedback(check.user, check.pk, {"outcome": "ordinary"})
+    save_training_consent(
+        check.user, check.pk, {"granted": True, "terms_version": TRAINING_CONSENT_VERSION}
+    )
+    request = rf.get(reverse("checks:detail", args=[check.pk]))
+    request.user = check.user
+
+    with django_assert_num_queries(1):
+        response = detail_view(request, check.pk)
+
+    assert response.status_code == 200
+    assert "Для этой проверки сохранено действующее согласие" in response.content.decode()
 
 
 def test_feedback_and_consent_http_are_separate_and_use_csrf(saved_check):

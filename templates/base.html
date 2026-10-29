@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Альфа Защита{% endblock %}</title>
+</head>
+<body>
+    <nav>
+        {% if user.is_authenticated %}
+        <a href="{% url 'accounts:profile' %}">Аккаунт</a>
+        <a href="{% url 'checks:history' %}">История проверок</a>
+        <a href="{% url 'transactions:history' %}">История операций и CSV</a>
+        {% else %}
+        <a href="{% url 'accounts:login' %}">Вход</a>
+        <a href="{% url 'accounts:register' %}">Регистрация</a>
+        {% endif %}
+    </nav>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

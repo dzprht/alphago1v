@@ -1,4 +1,5 @@
 import pytest
+from django.db import IntegrityError, transaction
 
 from accounts.forms import RegistrationForm
 from accounts.models import User
@@ -50,3 +51,25 @@ def test_registration_rejects_invalid_data(username, password1, password2, error
     with pytest.raises(ValueError):
         form.save()
     assert User.objects.count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("second_username", ["ivan", "IVAN"])
+def test_prevalidated_registrations_cannot_save_duplicate_username(second_username):
+    # проверяет уникальность логина после проверки обеих форм
+    first = RegistrationForm(
+        data={"username": "ivan", "password1": PASSWORD, "password2": PASSWORD}
+    )
+    second = RegistrationForm(
+        data={"username": second_username, "password1": PASSWORD, "password2": PASSWORD}
+    )
+    assert first.is_valid(), first.errors
+    assert second.is_valid(), second.errors
+
+    first.save()
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            second.save()
+
+    assert User.objects.count() == 1
+    assert User.objects.get().username == "ivan"

@@ -1,13 +1,9 @@
-<!doctype html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>История операций</title>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}История операций{% endblock %}
+
+{% block content %}
     <h1>История операций</h1>
-    <a href="{% url 'accounts:profile' %}">Аккаунт</a>
     {% if imported %}<p role="status">История загружена</p>{% endif %}
     {% if deleted %}<p role="status">Загруженная история удалена</p>{% endif %}
 
@@ -52,5 +48,4 @@
     {% else %}
     <p>История пока не загружена</p>
     {% endif %}
-</body>
-</html>
+{% endblock %}

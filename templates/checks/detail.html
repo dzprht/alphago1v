@@ -1,15 +1,8 @@
-<!doctype html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Результат проверки</title>
-</head>
-<body>
-    <nav>
-        <a href="{% url 'checks:history' %}">История проверок</a>
-        <a href="{% url 'accounts:profile' %}">Аккаунт</a>
-    </nav>
+{% extends "base.html" %}
+
+{% block title %}Результат проверки{% endblock %}
+
+{% block content %}
     <h1>{{ check.get_kind_display }}</h1>
     <p>{{ check.created_at|date:"d.m.Y H:i" }} — {{ check.get_status_display }}</p>
     <details>
@@ -71,5 +64,4 @@
         и прочитайте текущие условия перед отправкой</p>
     {% endif %}
     {% endif %}
-</body>
-</html>
+{% endblock %}

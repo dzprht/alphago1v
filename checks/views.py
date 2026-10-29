@@ -9,10 +9,9 @@ from django.views.decorators.http import require_GET, require_http_methods
 from checks.forms import CheckFeedbackForm, TrainingConsentForm
 from checks.models import Check
 from checks.services import (
-    get_check_feedback,
+    consent_is_current,
     get_user_check,
     get_user_checks,
-    has_training_consent,
     save_check_feedback,
     save_training_consent,
 )
@@ -34,12 +33,8 @@ def history_view(request):
 def detail_view(request, check_id):
     # показывает сохраненный результат и принимает отзыв или согласие
     check = get_user_check(request.user, check_id)
-    feedback = get_check_feedback(request.user, check_id)
-    training_allowed = has_training_consent(request.user, check_id)
-    feedback_form = CheckFeedbackForm(
-        initial={"outcome": feedback.outcome, "comment": feedback.comment} if feedback else None
-    )
-    consent_form = TrainingConsentForm(initial={"granted": training_allowed})
+    feedback_form = None
+    consent_form = None
 
     if request.method == "POST":
         if check.status != Check.Status.COMPLETED:
@@ -55,6 +50,15 @@ def detail_view(request, check_id):
                 return redirect("checks:detail", check_id=check_id)
         else:
             return HttpResponseBadRequest("Неизвестное действие")
+
+    feedback = getattr(check, "feedback", None)
+    training_allowed = consent_is_current(getattr(check, "training_consent", None))
+    if feedback_form is None:
+        feedback_form = CheckFeedbackForm(
+            initial={"outcome": feedback.outcome, "comment": feedback.comment} if feedback else None
+        )
+    if consent_form is None:
+        consent_form = TrainingConsentForm(initial={"granted": training_allowed})
 
     return render(
         request,
