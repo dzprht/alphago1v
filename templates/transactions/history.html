@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>История операций</title>
+</head>
+<body>
+    <h1>История операций</h1>
+    <a href="{% url 'accounts:profile' %}">Аккаунт</a>
+    {% if imported %}<p role="status">История загружена</p>{% endif %}
+    {% if deleted %}<p role="status">Загруженная история удалена</p>{% endif %}
+
+    <h2>Загрузка CSV</h2>
+    <p><a href="{% url 'transactions:template' %}">Скачать шаблон с вымышленными операциями</a></p>
+    <p>Замените примеры своими операциями. Поддерживается CSV в UTF-8 с разделителем ; до 2 МиБ и 10 000 операций.</p>
+    <p>Новая загрузка полностью заменит прежнюю историю операций. При ошибке файла старые данные сохранятся.</p>
+    <form method="post" action="{% url 'transactions:history' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Загрузить и заменить историю</button>
+    </form>
+
+    <h2>Загруженные операции</h2>
+    <p>Операций в истории: {{ transactions|length }}</p>
+    {% if transactions %}
+    <table>
+        <thead>
+            <tr>
+                <th>Дата и время</th>
+                <th>Сумма в рублях</th>
+                <th>Направление</th>
+                <th>Контрагент</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for operation in transactions %}
+            <tr>
+                <td>{{ operation.occurred_at|date:"d.m.Y H:i" }}</td>
+                <td>{{ operation.amount_rubles|floatformat:2 }}</td>
+                <td>{% if operation.direction == 'incoming' %}Поступление{% else %}Списание{% endif %}</td>
+                <td>{{ operation.recipient|default:"Не указан" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p>Удаление уберет все загруженные операции. Сохраненные результаты проверок останутся.</p>
+    <form method="post" action="{% url 'transactions:delete' %}">
+        {% csrf_token %}
+        <button type="submit">Удалить историю операций</button>
+    </form>
+    {% else %}
+    <p>История пока не загружена</p>
+    {% endif %}
+</body>
+</html>

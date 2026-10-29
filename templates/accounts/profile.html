@@ -8,6 +8,10 @@
 <body>
     <h1>Аккаунт</h1>
     <p>Вы вошли как {{ user.username }}</p>
+    <nav>
+        <a href="{% url 'checks:history' %}">История проверок</a>
+        <a href="{% url 'transactions:history' %}">История операций и CSV</a>
+    </nav>
     <form method="post" action="{% url 'accounts:logout' %}">
         {% csrf_token %}
         <button type="submit">Выйти</button>

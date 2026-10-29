@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>История проверок</title>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'accounts:profile' %}">Аккаунт</a>
+        <a href="{% url 'transactions:history' %}">История операций</a>
+    </nav>
+    <h1>История проверок</h1>
+    <ul>
+        {% for check in checks %}
+        <li>
+            <a href="{% url 'checks:detail' check.pk %}">{{ check.get_kind_display }}</a>
+            — {{ check.created_at|date:"d.m.Y H:i" }} — {{ check.get_status_display }}
+        </li>
+        {% empty %}
+        <li>Проверок пока нет</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
