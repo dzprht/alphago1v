@@ -1,12 +1,15 @@
 import json
 
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseBadRequest
+from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods
 
-from checks.forms import CheckFeedbackForm, TrainingConsentForm
+from checks.forms import (
+    AudioCheckForm, CheckFeedbackForm, ScreenshotCheckForm, TextCheckForm,
+    TrainingConsentForm, TransferCheckForm, URLCheckForm,
+)
 from checks.models import Check
 from checks.services import (
     consent_is_current,
@@ -15,6 +18,36 @@ from checks.services import (
     save_check_feedback,
     save_training_consent,
 )
+
+
+CHECK_FORMS = {
+    form.kind: form for form in (
+        TextCheckForm, URLCheckForm, AudioCheckForm, ScreenshotCheckForm, TransferCheckForm
+    )
+}
+
+
+@require_GET
+def home_view(request):
+    # показывает доступные виды проверок
+    return render(request, "checks/home.html", {"kinds": Check.Kind.choices})
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+def input_view(request, kind):
+    # показывает форму и проверяет ввод без запуска анализа
+    form_class = CHECK_FORMS.get(kind)
+    if form_class is None:
+        raise Http404
+    form, status = form_class(), 200
+    if request.method == "POST":
+        status = 503
+        if not form.is_multipart():
+            form = form_class(request.POST)
+            if not form.is_valid():
+                status = 400
+    return render(request, "checks/input.html", {"form": form}, status=status)
 
 
 @never_cache

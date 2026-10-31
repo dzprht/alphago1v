@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Альфа Защита{% endblock %}
+
+{% block content %}
+<h1>Альфа Защита</h1>
+<p>Выберите, что хотите проверить. Анализ пока не подключен.</p>
+<ul>
+    {% for kind, label in kinds %}
+    <li><a href="{% url 'checks:new' kind %}">{{ label }}</a></li>
+    {% endfor %}
+</ul>
+<p>Разовые проверки доступны без регистрации. Аккаунт нужен для личной истории, CSV и отзывов.</p>
+{% endblock %}
