@@ -1,0 +1,29 @@
+{
+  "version": "2026-11-01",
+  "brands": [
+    {
+      "name": "Альфа-Банк",
+      "aliases": ["альфа банк", "альфабанк", "alfa bank", "alfabank"],
+      "host_aliases": ["alfabank", "alfa-bank", "альфабанк", "альфа-банк"],
+      "domains": ["alfabank.ru", "alfa-bank.ru", "alfabank.com", "alfa-bank.com", "alfabank.sale", "alfafinance.ru", "aclub.ru", "alfafuture.com", "alfafuture.ru", "alfaleasing.ru", "baltbank.ru", "альфа-секьюр.рф"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027700067328"],
+      "checked_at": "2026-11-01"
+    },
+    {
+      "name": "Сбербанк",
+      "aliases": ["сбер", "сбербанк", "sber", "sberbank"],
+      "host_aliases": ["sber", "sberbank", "сбер", "сбербанк"],
+      "domains": ["sberbank.ru", "sber.ru", "sberbank.com", "sbrf.ru", "sberbank1.ru", "sberbankaktivno.ru", "sberindex.ru", "sbersova.ru", "sbertv.ru", "pokupay.ru", "clickstream.ru", "portal-da.ru", "sberclickstream.ru", "sberminor.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027700132195"],
+      "checked_at": "2026-11-01"
+    },
+    {
+      "name": "ВТБ",
+      "aliases": ["втб", "банк втб", "vtb", "vtb bank"],
+      "host_aliases": ["vtb", "втб"],
+      "domains": ["vtb.ru", "vtb.com", "vtb.promo", "vtb24.ru", "vtbfamily.ru", "vtbklassika.ru", "vtbrussia.ru", "vtbstrana.ru", "cscampus.ru", "vtb.bank.in", "vtb.corp.ru", "vtb.fut.ru", "vtb-grants.fut.ru", "vtb-liga.fut.ru", "втб.рф"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739609391"],
+      "checked_at": "2026-11-01"
+    }
+  ]
+}

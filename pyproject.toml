@@ -11,6 +11,9 @@ dependencies = [
     "numpy==2.4.6",
     "scikit-learn==1.9.0",
     "joblib==1.5.3",
+    "catboost==1.2.10",
+    "tldextract==5.4.0",
+    "idna==3.20",
 ]
 
 [dependency-groups]
