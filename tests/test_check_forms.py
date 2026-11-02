@@ -11,6 +11,7 @@ from checks.forms import (
     AudioCheckForm,
     ScreenshotCheckForm,
     TextCheckForm,
+    TRANSFER_QUESTIONS,
     TransferCheckForm,
     URLCheckForm,
 )
@@ -45,7 +46,11 @@ def test_check_forms_prepare_valid_data(form_class, kind, data):
     payload = form.get_input_data()
 
     assert form.kind == kind
-    assert payload["context"] == ""
+    if kind == Check.Kind.TRANSFER:
+        assert "context" not in payload
+        assert all(payload[name] == "unknown" for name in TRANSFER_QUESTIONS)
+    else:
+        assert payload["context"] == ""
     assert "user_id" not in payload
     assert "status" not in payload
     json.dumps(payload)
@@ -110,3 +115,25 @@ def test_form_data_can_create_check(signed_in):
     else:
         assert check.pk is None
         assert Check.objects.count() == 0
+
+
+def test_transfer_questionnaire_keeps_answers_separate_from_message():
+    # проверяет ответы анкеты и игнорирование свободного пересказа
+    answers = {
+        "requester": "claimed_organization", "channel": "call", "urgency": "yes",
+        "secrecy": "no", "changed_details": "unknown",
+    }
+    form = TransferCheckForm(data={
+        "amount": "12.34", "purpose": "purchase", "recipient": " shop ",
+        "message": "Переведите деньги", "context": "Не должно попасть во вход", **answers,
+    })
+    data = form.get_input_data()
+    assert data == {"amount_kopecks": 1234, "purpose": "purchase", "recipient": "shop",
+                    "message": "Переведите деньги", **answers}
+    for name in TRANSFER_QUESTIONS:
+        invalid = TransferCheckForm(data={"amount": "1", "purpose": "unknown", name: "made_up"})
+        assert not invalid.is_valid()
+        assert name in invalid.errors
+    too_long = TransferCheckForm(data={"amount": "1", "purpose": "unknown", "recipient": "x" * 101})
+    assert not too_long.is_valid()
+    assert "recipient" in too_long.errors

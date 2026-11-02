@@ -8,6 +8,8 @@ from checks.models import Check, CheckFeedback
 
 
 TRAINING_CONSENT_VERSION = "2026-10-28"
+TRANSFER_QUESTIONS = ("requester", "channel", "urgency", "secrecy", "changed_details")
+YES_NO_UNKNOWN = [("unknown", "Неизвестно"), ("yes", "Да"), ("no", "Нет")]
 
 
 class CheckForm(forms.Form):
@@ -67,6 +69,7 @@ class ScreenshotCheckForm(CheckForm):
 
 class TransferCheckForm(CheckForm):
     kind = Check.Kind.TRANSFER
+    context = None
     amount = forms.DecimalField(
         label="Сумма в рублях",
         min_value=Decimal("0.01"),
@@ -85,16 +88,51 @@ class TransferCheckForm(CheckForm):
             ("unknown", "Неизвестно"),
         ],
     )
-    recipient = forms.CharField(label="Обозначение получателя", required=False)
+    recipient = forms.CharField(label="Обозначение получателя", max_length=100, required=False)
     message = forms.CharField(
         label="Текст просьбы о переводе", required=False, widget=forms.Textarea
     )
-    field_order = ["amount", "purpose", "recipient", "message", "context"]
+    requester = forms.ChoiceField(
+        label="Кто попросил перевод", required=False, initial="unknown",
+        choices=[
+            ("unknown", "Неизвестно"),
+            ("self", "Мое решение"),
+            ("acquaintance", "Знакомый человек"),
+            ("seller", "Продавец"),
+            ("claimed_organization", "Представился сотрудником организации"),
+            ("other", "Другой человек"),
+        ],
+    )
+    channel = forms.ChoiceField(
+        label="Канал обращения", required=False, initial="unknown",
+        choices=[
+            ("unknown", "Неизвестно"),
+            ("chat", "Чат"),
+            ("call", "Звонок"),
+            ("email", "Электронная почта"),
+            ("website", "Сайт"),
+            ("in_person", "Лично"),
+            ("not_applicable", "Обращения не было"),
+            ("other", "Другое"),
+        ],
+    )
+    urgency = forms.ChoiceField(
+        label="Вас торопят", choices=YES_NO_UNKNOWN, required=False, initial="unknown"
+    )
+    secrecy = forms.ChoiceField(
+        label="Просят сохранить перевод в тайне", choices=YES_NO_UNKNOWN, required=False, initial="unknown"
+    )
+    changed_details = forms.ChoiceField(
+        label="Реквизиты менялись", choices=YES_NO_UNKNOWN, required=False, initial="unknown"
+    )
+    field_order = ["amount", "purpose", "recipient", "message", *TRANSFER_QUESTIONS]
 
     def get_input_data(self):
-        # переводит сумму в целое число копеек
+        # готовит сумму и ответы анкеты для обработки
         data = super().get_input_data()
         data["amount_kopecks"] = int(data.pop("amount") * 100)
+        for name in TRANSFER_QUESTIONS:
+            data[name] = data[name] or "unknown"
         return data
 
 
