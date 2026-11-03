@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404
@@ -10,6 +11,11 @@ from checks.forms import (
     TrainingConsentForm,
 )
 from checks.models import Check, CheckFeedback, TrainingConsent
+from transactions.models import TransactionImport
+from transactions.services import get_user_transactions
+
+
+logger = logging.getLogger(__name__)
 
 
 def create_check(user, kind, input_data):
@@ -100,6 +106,26 @@ def finish_check(
     for name, value in values.items():
         setattr(check, name, value)
     return check
+
+
+def run_check(user, kind, input_data, analyzer):
+    # выполняет проверку и сохраняет ее результат или ошибку
+    history = None
+    if kind == Check.Kind.TRANSFER and user.is_authenticated:
+        history = get_user_transactions(user)
+        if not history and not TransactionImport.objects.filter(user=user).exists():
+            history = None
+    check = create_check(user, kind, input_data)
+    try:
+        result, snapshot = analyzer.analyze(kind, input_data, history, checked_at=check.created_at)
+    except Exception:
+        logger.exception("Не удалось выполнить проверку %s", check.pk)
+        return finish_check(check, error_message="Не удалось выполнить анализ. Попробуйте позже.")
+    if result["status"] == "error":
+        return finish_check(check, error_message="Не удалось распознать материал. Попробуйте другой файл.",
+                            analyzer_version=result["analyzer_version"])
+    return finish_check(check, result=result, analyzer_version=result["analyzer_version"],
+                        context_snapshot=snapshot if user.is_authenticated else {})
 
 
 def get_user_checks(user):
