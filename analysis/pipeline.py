@@ -7,7 +7,7 @@ from analysis.transfer import transfer_features
 from analysis.url import extract_url
 
 
-PIPELINE_VERSION = "pipeline-v1"
+PIPELINE_VERSION = "pipeline-v2"
 
 
 def find_urls(text):
@@ -32,11 +32,17 @@ class Analyzer:
         self.risk_model = risk_model
         self.thresholds = dict(thresholds)
 
-    def analyze(self, kind, data, history=None, *, checked_at, turns=None,
-                order_known=True, extraction_status="unknown"):
-        # запускает блоки анализа и собирает ответ одной проверки
+    def prepare(self, kind, data, history=None, *, checked_at, turns=None,
+                order_known=True, extraction_status="unknown", extraction=None):
+        # готовит одинаковые признаки для обучения и обычной проверки
         if kind not in ("text", "url", "transfer", "audio", "screenshot"):
             raise ValueError("Неизвестный вид проверки")
+        if extraction is not None:
+            if kind not in ("audio", "screenshot"):
+                raise ValueError("Распознавание относится только к медиа")
+            turns = extraction["turns"]
+            order_known = extraction["order_known"]
+            extraction_status = extraction["status"]
         if turns is None:
             if kind in ("audio", "screenshot"):
                 raise ValueError("Сначала нужно распознать медиа")
@@ -50,14 +56,16 @@ class Analyzer:
         transfer = transfer_features(data["amount_kopecks"], data.get("recipient", ""), history,
                                      checked_at=checked_at) if kind == "transfer" else None
         versions, snapshot = {"pipeline": PIPELINE_VERSION}, {}
+        if extraction is not None:
+            versions["extraction"] = extraction["analyzer_version"]
         if text_result is not None:
             versions["text"] = text_result["analyzer_version"]
         if transfer is not None:
             versions["transfer"] = transfer["analyzer_version"]
             if history is not None:
                 snapshot = {"checked_at": checked_at.isoformat(), "transfer": transfer["values"]}
-        rows, decisions, url_history, invalid_urls = [], [], {}, False
-        targets = text_result["turns"] if text_result is not None else [None]
+        rows, target_ids, url_history, invalid_urls = [], [], {}, False
+        targets = text_result["turns"] if text_result is not None and text_result["turns"] else [None]
         for index, target in enumerate(targets):
             urls, invalid = find_urls(turns[index].text) if target is not None else ([], False)
             invalid_urls = invalid_urls or invalid
@@ -73,12 +81,27 @@ class Analyzer:
             row = risk_features(kind, text=target, url=url, transfer=transfer, fields=data,
                                 extraction_status=extraction_status, order_known=order_known)
             rows.append(row)
-            decisions.append(self.risk_model.predict(row))
-        result = assemble_result(rows, decisions, thresholds=self.thresholds, versions=versions)
-        if invalid_urls:
+            target_ids.append(target["turn_id"] if target is not None else None)
+        return {"rows": rows, "target_turn_ids": target_ids, "versions": versions,
+                "snapshot": snapshot, "invalid_urls": invalid_urls,
+                "limitations": extraction.get("limitations", []) if extraction is not None else [],
+                "extracted_text": extraction.get("extracted_text", "") if extraction is not None else ""}
+
+    def analyze(self, kind, data, history=None, *, checked_at, turns=None,
+                order_known=True, extraction_status="unknown", extraction=None):
+        # запускает итоговое дерево и собирает ответ из готовых признаков
+        prepared = self.prepare(kind, data, history, checked_at=checked_at, turns=turns,
+                                order_known=order_known, extraction_status=extraction_status, extraction=extraction)
+        decisions = [self.risk_model.predict(row) for row in prepared["rows"]]
+        result = assemble_result(prepared["rows"], decisions, thresholds=self.thresholds,
+                                 versions=prepared["versions"])
+        result["limitations"] = list(dict.fromkeys(result["limitations"] + prepared["limitations"]))
+        if prepared["extracted_text"]:
+            result["extracted_text"] = prepared["extracted_text"]
+        if prepared["invalid_urls"]:
             result["limitations"].append("Часть ссылок в исходном тексте не удалось корректно разобрать")
             if result["sufficiency"] == "sufficient":
                 result["sufficiency"] = "limited"
             if result["risk"] == 0:
                 result["risk"] = None
-        return result, snapshot
+        return result, prepared["snapshot"]

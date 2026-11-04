@@ -12,3 +12,10 @@ var/
 /AGENTS.md
 /.serena/
 /docs/backend_*.md
+
+# Локальное сравнение архитектур
+/ml/benchmark*.py
+/ml/requirements-benchmark*.txt
+/tests/test_benchmark*.py
+/notebooks/model_selection.ipynb
+/notebooks/.ipynb_checkpoints/

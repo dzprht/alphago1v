@@ -22,8 +22,16 @@ dev = [
     "pytest-django>=4.11,<5",
 ]
 ml = [
-    "torch==2.12.1",
+    "torch==2.11.0",
     "transformers==5.16.1",
+]
+media = [
+    "faster-whisper==1.2.1",
+    "pyannote.audio==4.0.7",
+    "easyocr==1.7.2",
+    "torchaudio==2.11.0",
+    "torchvision==0.26.0",
+    "torchcodec==0.17.0",
 ]
 
 [tool.uv]
@@ -31,6 +39,9 @@ package = false
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchaudio = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchcodec = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"

@@ -132,3 +132,19 @@ def test_unknown_order_invalid_links_and_prepared_media_remain_limited(analyzer)
     assert result["risk"] is None and result["sufficiency"] == "limited"
     with pytest.raises(ValueError, match="распознать"):
         analyzer.analyze("audio", {}, checked_at=datetime.now(timezone.utc))
+
+
+def test_media_and_training_use_same_prepared_features_without_tree_call(analyzer):
+    # связывает распознанные реплики с обучением и обычной проверкой
+    extraction = {"turns": [Turn("voice-1", "Распознанная просьба", "A", source_span={"start": 1, "end": 2})],
+                  "status": "partial", "order_known": False, "analyzer_version": "audio-test",
+                  "extracted_text": "Распознанная просьба", "limitations": ["Тестовое ограничение"]}
+    now = datetime.now(timezone.utc)
+    prepared = analyzer.prepare("audio", {}, checked_at=now, extraction=extraction)
+    assert analyzer.risk_model.rows == []
+    assert prepared["target_turn_ids"] == ["voice-1"]
+    assert prepared["versions"]["extraction"] == "audio-test"
+    result, _ = analyzer.analyze("audio", {}, checked_at=now, extraction=extraction)
+    assert analyzer.risk_model.rows == prepared["rows"]
+    assert result["risk"] is None and result["extracted_text"] == extraction["extracted_text"]
+    assert "Тестовое ограничение" in result["limitations"]
