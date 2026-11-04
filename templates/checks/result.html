@@ -1,0 +1,39 @@
+{% if check.status == 'completed' %}
+<h2>Результат проверки</h2>
+{% if check.result.status %}
+    {% if check.result.risk == 2 %}
+    <p>Выраженная опасность</p>
+    {% elif check.result.risk == 1 %}
+    <p>Есть основания насторожиться</p>
+    {% elif check.result.risk == 0 %}
+    <p>Явных признаков опасности не обнаружено</p>
+    {% else %}
+    <p>Общий риск не определен</p>
+    {% endif %}
+    {% if check.result.sufficiency == 'limited' %}
+    <p>Оценка ограничена доступными данными</p>
+    {% elif check.result.sufficiency == 'insufficient' %}
+    <p>Недостаточно данных для общего вывода</p>
+    {% endif %}
+    <h3>Найденные признаки</h3>
+    <ul>
+        {% for finding in check.result.findings %}
+        <li>{{ finding.description }}
+            {% if finding.source_ref.text %}<blockquote>{{ finding.source_ref.text }}</blockquote>{% endif %}
+            {% if finding.source_ref.url %}<p><code>{{ finding.source_ref.url }}</code></p>{% endif %}
+        </li>
+        {% empty %}<li>Признаки не показаны. Это не гарантирует безопасность</li>{% endfor %}
+    </ul>
+    <h3>Что можно сделать</h3>
+    <ul>{% for item in check.result.recommendations %}<li>{{ item }}</li>{% endfor %}</ul>
+    <h3>Ограничения</h3>
+    <ul>{% for item in check.result.limitations %}<li>{{ item }}</li>{% endfor %}</ul>
+{% else %}
+    <pre>{{ result_text }}</pre>
+{% endif %}
+<p>Версия анализатора: {{ check.analyzer_version }}</p>
+{% elif check.status == 'failed' %}
+<p role="alert">{{ check.error_message }}</p>
+{% else %}
+<p>Готового результата пока нет</p>
+{% endif %}

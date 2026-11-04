@@ -1,11 +1,14 @@
 import json
+import logging
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods
 
+from analysis.runtime import load_analyzer
 from checks.forms import (
     AudioCheckForm, CheckFeedbackForm, ScreenshotCheckForm, TextCheckForm,
     TrainingConsentForm, TransferCheckForm, URLCheckForm,
@@ -15,11 +18,13 @@ from checks.services import (
     consent_is_current,
     get_user_check,
     get_user_checks,
+    run_check,
     save_check_feedback,
     save_training_consent,
 )
 
 
+logger = logging.getLogger(__name__)
 CHECK_FORMS = {
     form.kind: form for form in (
         TextCheckForm, URLCheckForm, AudioCheckForm, ScreenshotCheckForm, TransferCheckForm
@@ -36,18 +41,32 @@ def home_view(request):
 @never_cache
 @require_http_methods(["GET", "POST"])
 def input_view(request, kind):
-    # показывает форму и проверяет ввод без запуска анализа
+    # проверяет ввод и показывает результат анализа
     form_class = CHECK_FORMS.get(kind)
     if form_class is None:
         raise Http404
     form, status = form_class(), 200
+    unavailable = not settings.ANALYZER_DIR
     if request.method == "POST":
         status = 503
         if not form.is_multipart():
             form = form_class(request.POST)
             if not form.is_valid():
                 status = 400
-    return render(request, "checks/input.html", {"form": form}, status=status)
+            else:
+                try:
+                    analyzer = load_analyzer(settings.ANALYZER_DIR)
+                except Exception:
+                    logger.exception("Не удалось загрузить анализатор")
+                    analyzer = None
+                if analyzer is not None:
+                    check = run_check(request.user, kind, form.get_input_data(), analyzer)
+                    if request.user.is_authenticated:
+                        return redirect("checks:detail", check_id=check.pk)
+                    return render(request, "checks/guest_result.html", {"check": check},
+                                  status=200 if check.status == Check.Status.COMPLETED else 503)
+                unavailable = True
+    return render(request, "checks/input.html", {"form": form, "unavailable": unavailable}, status=status)
 
 
 @never_cache

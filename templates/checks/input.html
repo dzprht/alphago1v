@@ -4,7 +4,9 @@
 
 {% block content %}
 <h1>{{ form.kind.label }}</h1>
+{% if unavailable %}
 <p role="status">Анализ пока не подключен. Введенные данные не сохраняются.</p>
+{% endif %}
 {% if not user.is_authenticated %}
 <p>В гостевом режиме результат не попадет в историю и может потеряться при перезагрузке страницы.</p>
 {% endif %}
@@ -15,7 +17,7 @@
     {% csrf_token %}
     <fieldset {% if form.is_multipart %}disabled{% endif %}>
         {{ form.as_p }}
-        <button type="submit">Проверить ввод</button>
+        <button type="submit">Проверить</button>
     </fieldset>
 </form>
 {% endblock %}

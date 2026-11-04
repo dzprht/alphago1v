@@ -9,15 +9,7 @@
         <summary>Введенные данные</summary>
         <pre>{{ input_text }}</pre>
     </details>
-    {% if check.status == 'completed' %}
-    <h2>Сохраненный результат</h2>
-    <pre>{{ result_text }}</pre>
-    <p>Версия анализатора: {{ check.analyzer_version }}</p>
-    {% elif check.status == 'failed' %}
-    <p role="alert">{{ check.error_message }}</p>
-    {% else %}
-    <p>Готового результата пока нет</p>
-    {% endif %}
+    {% include "checks/result.html" %}
     {% if check.extracted_text %}
     <h2>Распознанный текст</h2>
     <pre>{{ check.extracted_text }}</pre>

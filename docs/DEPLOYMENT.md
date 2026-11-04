@@ -8,7 +8,7 @@
 
 ```bash
 python -m pip install uv==0.11.7
-uv sync --locked --no-dev
+uv sync --locked --group ml --no-dev
 uv run --no-sync python manage.py migrate --noinput
 uv run --no-sync gunicorn config.wsgi:application
 ```
@@ -30,6 +30,7 @@ Gunicorn сам использует `PORT`, если его задает хос
 | `PGSSLMODE` | Режим SSL клиента PostgreSQL по настройкам провайдера. В локальном примере `prefer`; для внешней БД параметры TLS выбираются отдельно. `require` шифрует соединение, `verify-full` дополнительно проверяет имя сервера и требует доверенный CA. |
 | `DJANGO_HTTPS` | `1` после настройки реального HTTPS: перенаправление с HTTP и secure-cookie для сессии и CSRF. Локально `0`. |
 | `FORWARDED_ALLOW_IPS` | IP доверенных прокси для Gunicorn. По умолчанию `127.0.0.1,::1`. Реальные адреса выбираются при настройке провайдера. Прокси должен удалять клиентский `X-Forwarded-Proto` и задавать достоверное значение сам; прямой доступ к серверу приложения нужно ограничить. |
+| `ANALYZER_DIR` | Каталог подготовленного комплекта моделей. Пустое значение оставляет анализ недоступным. Относительный путь считается от корня проекта. |
 
 Для обычных форм на том же домене отдельный `CSRF_TRUSTED_ORIGINS` не нужен. Если появятся другие разрешенные источники, добавим конкретные адреса при настройке провайдера.
 
@@ -48,6 +49,38 @@ Gunicorn определяет исходную схему HTTPS по загол�
 
 Статических файлов и Django admin сейчас нет, поэтому `collectstatic`, WhiteNoise и отдельный сервер статики не добавлены. При появлении CSS или других статических файлов способ их отдачи нужно подключить до публикации.
 
-Анализ еще не подключен, медиа-обработка выключена. Проверка настроек не заменяет фактическую проверку сайта на хостинге.
+## Комплект моделей
+
+Формы текста, ссылки и перевода используют сохраненный Analyzer при настроенном `ANALYZER_DIR`. Рабочий текстовый/risk-корпус, OOF и калибровка еще не подготовлены; существующие демо-артефакты автоматически не включаются.
+
+После обучения каталог должен иметь такую структуру:
+
+```text
+var/ml/release-01/
+  text/heads.joblib
+  text/manifest.json
+  url/model.cbm
+  url/manifest.json
+  risk/tree.joblib
+  risk/manifest.json
+  calibration.json
+```
+
+`calibration.json` содержит два объекта:
+
+- `versions`: ключи `text`, `url`, `risk`, значения — точные `analyzer_version` из соответствующих manifest;
+- `thresholds`: числовые пороги `text_urgency`, `text_money_request`, `text_credentials_request`, `text_secrecy`, `text_remote_access`, `text_authority_claim`, `text_protective_transfer`, `url_score`, все от 0 до 1.
+
+Пороги выбираются на calibration, а не заполняются одним произвольным значением. Загрузчик проверяет состав и версии, но качество обучения подтверждают отдельные эксперименты.
+
+Для E5 нужны зависимости группы `ml` и заранее подготовленный кэш `var/ml/cache` проекта. Первое скачивание закрепленной модели выполняется отдельно до запуска сайта:
+
+```bash
+uv run --no-sync python -c 'from analysis.text import E5Encoder; E5Encoder(allow_download=True)'
+```
+
+Затем задается `ANALYZER_DIR=var/ml/release-01` и перезапускается Gunicorn. Веб-запросы используют только локальный кэш; скачивания в них отключены. Комплект загружается один раз на процесс; после замены файлов по тому же пути требуется перезапуск. При отсутствии или несовместимости комплекта POST возвращает 503 без создания проверки. Неверный ввод возвращает 400 до загрузки моделей.
+
+Медиа-обработка выключена. Проверка настроек и HTTP с тестовыми ответами не заменяет проверку качества рабочих моделей и сайта на хостинге.
 
 Документация: [Gunicorn](https://github.com/benoitc/gunicorn/blob/master/docs/content/run.md), [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/), [переменные клиента PostgreSQL](https://www.postgresql.org/docs/17/libpq-envars.html).

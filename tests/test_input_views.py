@@ -11,6 +11,12 @@ from checks.models import Check
 pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture(autouse=True)
+def disabled_analyzer(settings):
+    # проверяет эти страницы без подключенных моделей
+    settings.ANALYZER_DIR = ""
+
+
 @pytest.mark.parametrize("authenticated", [False, True])
 def test_home_and_five_forms_are_public(client, authenticated):
     # проверяет страницы для гостя и аккаунта
