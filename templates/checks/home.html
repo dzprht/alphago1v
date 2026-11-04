@@ -1,14 +1,28 @@
 {% extends "base.html" %}
-
-{% block title %}Альфа Защита{% endblock %}
-
+{% block title %}Альфа Защита — проверка обращений{% endblock %}
 {% block content %}
-<h1>Альфа Защита</h1>
-<p>Выберите, что хотите проверить. Анализ пока не подключен.</p>
-<ul>
+<div class="hero">
+    <p class="eyebrow">ПЕРЕД ТЕМ КАК ДЕЙСТВОВАТЬ</p>
+    <h1>Проверьте просьбу, которая вызывает сомнения</h1>
+    <p>Сообщение, ссылка или предстоящий перевод. Посмотрите, какие детали требуют внимания и что стоит уточнить.</p>
+</div>
+<div class="page-heading"><h2>Что хотите проверить?</h2></div>
+<div class="check-grid">
     {% for kind, label in kinds %}
-    <li><a href="{% url 'checks:new' kind %}">{{ label }}</a></li>
+    <a class="check-card" href="{% url 'checks:new' kind %}">
+        <div class="card-top"><span>0{{ forloop.counter }}</span>{% if kind == 'audio' or kind == 'screenshot' %}<span class="badge">Пока недоступно</span>{% else %}<span>Без регистрации</span>{% endif %}</div>
+        <strong>{{ label }}</strong>
+        <p>{% if kind == 'text' %}Вставьте сообщение или переписку, чтобы проверить содержание просьбы.
+        {% elif kind == 'url' %}Проверьте адрес сайта. Переходить по нему не нужно.
+        {% elif kind == 'audio' %}Запись звонка или голосовое сообщение. Загрузка еще не включена.
+        {% elif kind == 'screenshot' %}Снимок личной переписки. Загрузка еще не включена.
+        {% else %}Укажите сумму и обстоятельства. Своя история операций дополнит проверку.{% endif %}</p>
+        <span class="card-action">{% if kind == 'audio' or kind == 'screenshot' %}Подробнее{% else %}Перейти к проверке{% endif %} →</span>
+    </a>
     {% endfor %}
-</ul>
-<p>Разовые проверки доступны без регистрации. Аккаунт нужен для личной истории, CSV и отзывов.</p>
+</div>
+<div class="notice">
+    <strong>Аккаунт нужен для личной истории</strong>
+    <p>Разовые проверки доступны без регистрации. После входа можно сохранять результаты, загружать CSV и оставлять отзывы.</p>
+</div>
 {% endblock %}

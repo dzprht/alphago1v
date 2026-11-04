@@ -1,39 +1,38 @@
 {% if check.status == 'completed' %}
-<h2>Результат проверки</h2>
-{% if check.result.status %}
-    {% if check.result.risk == 2 %}
-    <p>Выраженная опасность</p>
-    {% elif check.result.risk == 1 %}
-    <p>Есть основания насторожиться</p>
-    {% elif check.result.risk == 0 %}
-    <p>Явных признаков опасности не обнаружено</p>
+<section class="panel result{% if check.result.risk == 2 %} result--high{% elif check.result.risk == 1 %} result--medium{% elif check.result.risk == 0 %} result--low{% endif %}">
+    <p class="eyebrow">РЕЗУЛЬТАТ ПРОВЕРКИ</p>
+    {% if check.result.status %}
+        <h2 class="result-title">{% if check.result.risk == 2 %}Выраженная опасность{% elif check.result.risk == 1 %}Есть основания насторожиться{% elif check.result.risk == 0 %}Явных признаков опасности не обнаружено{% else %}Общий риск не определен{% endif %}</h2>
+        {% if check.result.sufficiency == 'limited' %}<p>Оценка ограничена доступными данными</p>{% elif check.result.sufficiency == 'insufficient' %}<p>Недостаточно данных для общего вывода</p>{% endif %}
+        {% if check.result.risk == 0 %}<p>Отсутствие найденных признаков не гарантирует безопасность. Если сомневаетесь, проверьте просьбу через независимый канал связи.</p>{% endif %}
     {% else %}
-    <p>Общий риск не определен</p>
+        <h2>Результат проверки</h2>
+        <pre>{{ result_text }}</pre>
     {% endif %}
-    {% if check.result.sufficiency == 'limited' %}
-    <p>Оценка ограничена доступными данными</p>
-    {% elif check.result.sufficiency == 'insufficient' %}
-    <p>Недостаточно данных для общего вывода</p>
-    {% endif %}
-    <h3>Найденные признаки</h3>
-    <ul>
+</section>
+{% if check.result.status %}
+<section class="panel">
+    <h2>Найденные признаки</h2>
+    <ul class="finding-list">
         {% for finding in check.result.findings %}
-        <li>{{ finding.description }}
+        <li><strong>{{ finding.description }}</strong>
             {% if finding.source_ref.text %}<blockquote>{{ finding.source_ref.text }}</blockquote>{% endif %}
             {% if finding.source_ref.url %}<p><code>{{ finding.source_ref.url }}</code></p>{% endif %}
         </li>
         {% empty %}<li>Признаки не показаны. Это не гарантирует безопасность</li>{% endfor %}
     </ul>
-    <h3>Что можно сделать</h3>
-    <ul>{% for item in check.result.recommendations %}<li>{{ item }}</li>{% endfor %}</ul>
-    <h3>Ограничения</h3>
-    <ul>{% for item in check.result.limitations %}<li>{{ item }}</li>{% endfor %}</ul>
-{% else %}
-    <pre>{{ result_text }}</pre>
+</section>
+{% if check.result.recommendations %}
+<section class="panel"><h2>Что можно сделать</h2><ul>{% for item in check.result.recommendations %}<li>{{ item }}</li>{% endfor %}</ul></section>
 {% endif %}
-<p>Версия анализатора: {{ check.analyzer_version }}</p>
+{% if check.result.limitations %}
+<section class="panel"><h2>Ограничения</h2><ul>{% for item in check.result.limitations %}<li>{{ item }}</li>{% endfor %}</ul></section>
+{% endif %}
+{% endif %}
+{% if check.extracted_text %}<section class="panel"><h2>Распознанный текст</h2><pre>{{ check.extracted_text }}</pre></section>{% endif %}
+<p class="meta">Версия анализатора: {{ check.analyzer_version }}</p>
 {% elif check.status == 'failed' %}
-<p role="alert">{{ check.error_message }}</p>
+<div class="notice notice--error" role="alert"><strong>Проверка не завершена</strong><p>{{ check.error_message }}</p></div>
 {% else %}
-<p>Готового результата пока нет</p>
+<div class="notice" role="status">Готового результата пока нет</div>
 {% endif %}

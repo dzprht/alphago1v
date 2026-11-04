@@ -1,59 +1,49 @@
 {% extends "base.html" %}
-
-{% block title %}Результат проверки{% endblock %}
-
+{% block title %}Результат проверки — Альфа Защита{% endblock %}
 {% block content %}
-    <h1>{{ check.get_kind_display }}</h1>
-    <p>{{ check.created_at|date:"d.m.Y H:i" }} — {{ check.get_status_display }}</p>
-    <details>
-        <summary>Введенные данные</summary>
-        <pre>{{ input_text }}</pre>
-    </details>
+<div class="narrow">
+    <div class="page-heading"><h1>{{ check.get_kind_display }}</h1><p>{{ check.created_at|date:"d.m.Y H:i" }} · {{ check.get_status_display }}</p></div>
     {% include "checks/result.html" %}
-    {% if check.extracted_text %}
-    <h2>Распознанный текст</h2>
-    <pre>{{ check.extracted_text }}</pre>
-    {% endif %}
-
+    <div class="panel"><details><summary>Введенные данные</summary><pre>{{ input_text }}</pre></details></div>
     {% if check.status == 'completed' %}
-    <h2>Чем закончилась ситуация</h2>
-    <p>Ваш отзыв не меняет исходный прогноз и остается непроверенным сообщением</p>
-    {% if feedback %}
-    <p>Отзыв сохранен {{ feedback.updated_at|date:"d.m.Y H:i" }}</p>
+    <section class="panel">
+        <h2>Чем закончилась ситуация</h2>
+        <p class="muted">Ваш отзыв не меняет исходный прогноз и остается непроверенным сообщением</p>
+        {% if feedback %}<p class="meta">Отзыв сохранен {{ feedback.updated_at|date:"d.m.Y H:i" }}</p>{% endif %}
+        <form method="post" action="{% url 'checks:detail' check.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="feedback">
+            {% include "includes/form_fields.html" with form=feedback_form %}
+            <button type="submit">Сохранить отзыв</button>
+        </form>
+    </section>
+    <section class="panel">
+        <h2>Использование данных для будущего обучения</h2>
+        <p>Разрешение необязательно. Проверки и отзывы доступны без него. Согласие касается только этой проверки, его можно отозвать.</p>
+        {% if training_allowed %}<p class="notice notice--success">Для этой проверки сохранено действующее согласие</p>{% else %}<p class="notice">Действующего согласия для этой проверки нет</p>{% endif %}
+        <details>
+            <summary>Прочитать условия использования данных</summary>
+            <p class="meta">Версия условий: {{ consent_form.terms_version.field.initial }}</p>
+            <p>Согласие касается только этой проверки: введенных сведений, распознанного текста,
+                результата, сохраненного контекста и вашего отзыва, если он есть.
+                Данные должны пройти ручную проверку перед подготовкой будущего обучения.</p>
+            <p>Другие проверки, полная история CSV, исходные аудио и изображения,
+                логин, пароль и сессии в согласие не входят.</p>
+            <p>Разрешение необязательно. Проверки и отзывы доступны без него.
+                Его можно отозвать отдельным сохранением этой формы с выключенным флажком.</p>
+            <p>Если условия изменятся, понадобится новое явное решение.
+                Наличие согласия не подтверждает правильность отзыва и не запускает обучение.</p>
+            <p>Сейчас нет обучения, экспорта выборки или передачи данных стороннему сервису.</p>
+        </details>
+        <form method="post" action="{% url 'checks:detail' check.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="consent">
+            {% include "includes/form_fields.html" with form=consent_form %}
+            <button class="button--secondary" type="submit">Сохранить решение</button>
+        </form>
+        {% if consent_form.errors %}<p>Если форма была открыта давно, <a href="{% url 'checks:detail' check.pk %}">обновите страницу</a> и прочитайте текущие условия перед отправкой</p>{% endif %}
+    </section>
     {% endif %}
-    <form method="post" action="{% url 'checks:detail' check.pk %}">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="feedback">
-        {{ feedback_form.as_p }}
-        <button type="submit">Сохранить отзыв</button>
-    </form>
-
-    <h2>Использование данных для будущего обучения</h2>
-    <p>Версия условий: {{ consent_form.terms_version.field.initial }}</p>
-    <p>Согласие касается только этой проверки: введенных сведений, распознанного текста,
-        результата, сохраненного контекста и вашего отзыва, если он есть.
-        Данные должны пройти ручную проверку перед подготовкой будущего обучения.</p>
-    <p>Другие проверки, полная история CSV, исходные аудио и изображения,
-        логин, пароль и сессии в согласие не входят.</p>
-    <p>Разрешение необязательно. Проверки и отзывы доступны без него.
-        Его можно отозвать отдельным сохранением этой формы с выключенным флажком.</p>
-    <p>Если условия изменятся, понадобится новое явное решение.
-        Наличие согласия не подтверждает правильность отзыва и не запускает обучение.</p>
-    <p>Сейчас нет обучения, экспорта выборки или передачи данных стороннему сервису.</p>
-    {% if training_allowed %}
-    <p>Для этой проверки сохранено действующее согласие</p>
-    {% else %}
-    <p>Действующего согласия для этой проверки нет</p>
-    {% endif %}
-    <form method="post" action="{% url 'checks:detail' check.pk %}">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="consent">
-        {{ consent_form.as_p }}
-        <button type="submit">Сохранить решение</button>
-    </form>
-    {% if consent_form.errors %}
-    <p>Если форма была открыта давно, <a href="{% url 'checks:detail' check.pk %}">обновите страницу</a>
-        и прочитайте текущие условия перед отправкой</p>
-    {% endif %}
-    {% endif %}
+    <div class="actions"><a class="button" href="{% url 'checks:new' check.kind %}">Новая проверка</a><a href="{% url 'checks:history' %}">← В историю проверок</a></div>
+</div>
 {% endblock %}

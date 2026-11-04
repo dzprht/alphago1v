@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
+    "django.contrib.staticfiles",
     "accounts",
     "checks",
     "transactions",
@@ -27,6 +28,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -36,6 +38,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "var/staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "accounts:login"
 

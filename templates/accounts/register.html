@@ -1,13 +1,15 @@
 {% extends "base.html" %}
-
-{% block title %}Регистрация{% endblock %}
-
+{% block title %}Регистрация — Альфа Защита{% endblock %}
 {% block content %}
-    <h1>Регистрация</h1>
-    <form method="post" action="{% url 'accounts:register' %}">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Зарегистрироваться</button>
-    </form>
-    <p>После регистрации войдите в аккаунт</p>
+<div class="auth-page">
+    <div class="page-heading"><h1>Регистрация</h1><p>Аккаунт сохранит результаты и позволит использовать свою историю операций.</p></div>
+    <div class="panel">
+        <form method="post" action="{% url 'accounts:register' %}">
+            {% csrf_token %}
+            {% include "includes/form_fields.html" %}
+            <button type="submit">Зарегистрироваться</button>
+        </form>
+    </div>
+    <p>После регистрации войдите в аккаунт. <a href="{% url 'accounts:login' %}">Перейти ко входу</a></p>
+</div>
 {% endblock %}

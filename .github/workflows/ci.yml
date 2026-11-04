@@ -53,6 +53,7 @@ jobs:
           uv run --no-sync python manage.py check
           uv run --no-sync python manage.py makemigrations --check --dry-run
           uv run --no-sync python manage.py migrate --noinput
+          uv run --no-sync python manage.py collectstatic --noinput
           uv run --no-sync gunicorn --check-config config.wsgi:application
 
       - name: Run tests

@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-
-{% block title %}Результат проверки{% endblock %}
-
+{% block title %}Результат проверки — Альфа Защита{% endblock %}
 {% block content %}
-<h1>{{ check.get_kind_display }}</h1>
-<p>{{ check.created_at|date:"d.m.Y H:i" }}</p>
-<p>Гостевой результат не сохранен и может потеряться при перезагрузке или закрытии страницы.</p>
-{% include "checks/result.html" %}
-<p><a href="{% url 'checks:new' check.kind %}">Новая проверка</a></p>
+<div class="narrow">
+    <div class="page-heading"><h1>{{ check.get_kind_display }}</h1><p>{{ check.created_at|date:"d.m.Y H:i" }}</p></div>
+    <div class="notice"><p>Гостевой результат не сохранен и может потеряться при перезагрузке или закрытии страницы.</p></div>
+    {% include "checks/result.html" %}
+    <div class="actions"><a class="button" href="{% url 'checks:new' check.kind %}">Новая проверка</a><a href="{% url 'home' %}">Другой вид проверки</a></div>
+</div>
 {% endblock %}

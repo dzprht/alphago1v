@@ -10,6 +10,7 @@
 python -m pip install uv==0.11.7
 uv sync --locked --group ml --no-dev
 uv run --no-sync python manage.py migrate --noinput
+uv run --no-sync python manage.py collectstatic --noinput
 uv run --no-sync gunicorn config.wsgi:application
 ```
 
@@ -47,7 +48,11 @@ Gunicorn определяет исходную схему HTTPS по загол�
 
 `check --deploy` проверен с параметрами будущего HTTPS-режима. Осталось предупреждение `security.W004`: HSTS включим после проверки HTTPS на реальном домене.
 
-Статических файлов и Django admin сейчас нет, поэтому `collectstatic`, WhiteNoise и отдельный сервер статики не добавлены. При появлении CSS или других статических файлов способ их отдачи нужно подключить до публикации.
+## Статические файлы
+
+CSS хранится в `static/css/site.css`; шаблоны получают его адрес через Django-тег `static`. Команда `collectstatic` собирает файлы в `var/staticfiles`. WhiteNoise отдает их по `/static/` через тот же Gunicorn при `DJANGO_DEBUG=0`. Отдельный сервер статики не требуется.
+
+После каждого обновления CSS нужно повторить `collectstatic` и перезапустить Gunicorn. В локальном режиме `DJANGO_DEBUG=1` команда `runserver` берет файлы прямо из `static/`.
 
 ## Комплект моделей
 
@@ -83,4 +88,4 @@ uv run --no-sync python -c 'from analysis.text import E5Encoder; E5Encoder(allow
 
 Медиа-обработка выключена. Проверка настроек и HTTP с тестовыми ответами не заменяет проверку качества рабочих моделей и сайта на хостинге.
 
-Документация: [Gunicorn](https://github.com/benoitc/gunicorn/blob/master/docs/content/run.md), [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/), [переменные клиента PostgreSQL](https://www.postgresql.org/docs/17/libpq-envars.html).
+Документация: [Gunicorn](https://github.com/benoitc/gunicorn/blob/master/docs/content/run.md), [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/), [WhiteNoise и Django](https://whitenoise.readthedocs.io/en/stable/django.html), [переменные клиента PostgreSQL](https://www.postgresql.org/docs/17/libpq-envars.html).

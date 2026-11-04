@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-
-{% block title %}Аккаунт{% endblock %}
-
+{% block title %}Аккаунт — Альфа Защита{% endblock %}
 {% block content %}
-    <h1>Аккаунт</h1>
-    <p>Вы вошли как {{ user.username }}</p>
-    <form method="post" action="{% url 'accounts:logout' %}">
-        {% csrf_token %}
-        <button type="submit">Выйти</button>
-    </form>
+<div class="narrow">
+    <div class="page-heading"><h1>Аккаунт</h1><p>Вы вошли как <strong>{{ user.username }}</strong></p></div>
+    <div class="panel">
+        <h2>Ваши данные</h2><p class="muted">Результаты проверок и загруженные операции доступны только вам.</p>
+        <div class="actions"><a class="button" href="{% url 'checks:history' %}">История проверок</a><a class="button button--secondary" href="{% url 'transactions:history' %}">Операции и CSV</a></div>
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="button--secondary" type="submit">Выйти</button></form>
+</div>
 {% endblock %}

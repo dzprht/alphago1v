@@ -1,17 +1,15 @@
 {% extends "base.html" %}
-
-{% block title %}История проверок{% endblock %}
-
+{% block title %}История проверок — Альфа Защита{% endblock %}
 {% block content %}
-    <h1>История проверок</h1>
-    <ul>
-        {% for check in checks %}
-        <li>
-            <a href="{% url 'checks:detail' check.pk %}">{{ check.get_kind_display }}</a>
-            — {{ check.created_at|date:"d.m.Y H:i" }} — {{ check.get_status_display }}
-        </li>
-        {% empty %}
-        <li>Проверок пока нет</li>
-        {% endfor %}
-    </ul>
+<div class="narrow">
+    <div class="page-heading"><h1>История проверок</h1><p>Здесь сохранены ваши проверки. При открытии показывается исходный результат.</p></div>
+    <div class="panel">
+        <ul class="history-list">
+            {% for check in checks %}
+            <li><a class="history-link" href="{% url 'checks:detail' check.pk %}"><span><strong>{{ check.get_kind_display }}</strong><span class="muted">{{ check.get_status_display }}</span></span><time datetime="{{ check.created_at|date:'c' }}">{{ check.created_at|date:"d.m.Y H:i" }}</time></a></li>
+            {% empty %}<li class="empty-state"><h2>Проверок пока нет</h2><p class="muted">Начните с сообщения, ссылки или перевода.</p></li>{% endfor %}
+        </ul>
+    </div>
+    <a class="button" href="{% url 'home' %}">Новая проверка</a>
+</div>
 {% endblock %}

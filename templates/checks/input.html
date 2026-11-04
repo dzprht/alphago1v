@@ -1,23 +1,29 @@
 {% extends "base.html" %}
-
-{% block title %}{{ form.kind.label }}{% endblock %}
-
+{% block title %}{{ form.kind.label }} — Альфа Защита{% endblock %}
 {% block content %}
-<h1>{{ form.kind.label }}</h1>
-{% if unavailable %}
-<p role="status">Анализ пока не подключен. Введенные данные не сохраняются.</p>
-{% endif %}
-{% if not user.is_authenticated %}
-<p>В гостевом режиме результат не попадет в историю и может потеряться при перезагрузке страницы.</p>
-{% endif %}
-{% if form.is_multipart %}
-<p>Загрузка файлов станет доступна после выбора форматов и лимитов обработки.</p>
-{% endif %}
-<form method="post" {% if form.is_multipart %}enctype="multipart/form-data"{% endif %}>
-    {% csrf_token %}
-    <fieldset {% if form.is_multipart %}disabled{% endif %}>
-        {{ form.as_p }}
-        <button type="submit">Проверить</button>
-    </fieldset>
-</form>
+<div class="narrow">
+    <div class="page-heading">
+        <p class="eyebrow">ПРОВЕРКА ОБРАЩЕНИЯ</p>
+        <h1>{{ form.kind.label }}</h1>
+        <p>Заполните основные поля. Остальные сведения можно добавить, если они известны.</p>
+    </div>
+    {% if form.is_multipart %}
+    <div class="notice notice--warning" role="status"><strong>Загрузка пока недоступна</strong><p>Загрузка файлов станет доступна после выбора форматов и лимитов обработки.</p></div>
+    {% elif unavailable %}
+    <div class="notice notice--warning" role="status"><strong>Анализ пока не подключен</strong><p>Проверка сейчас недоступна. Введенные данные не сохраняются.</p></div>
+    {% endif %}
+    {% if not user.is_authenticated %}
+    <p class="muted">В гостевом режиме результат не попадет в историю и может потеряться при перезагрузке страницы.</p>
+    {% endif %}
+    <div class="panel">
+        <form method="post" {% if form.is_multipart %}enctype="multipart/form-data"{% endif %}>
+            {% csrf_token %}
+            <fieldset {% if form.is_multipart %}disabled{% endif %}>
+                {% include "includes/form_fields.html" %}
+                <button type="submit">Проверить</button>
+            </fieldset>
+        </form>
+    </div>
+    <a href="{% url 'home' %}">← Выбрать другой вид проверки</a>
+</div>
 {% endblock %}

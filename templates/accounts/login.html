@@ -1,13 +1,16 @@
 {% extends "base.html" %}
-
-{% block title %}Вход{% endblock %}
-
+{% block title %}Вход — Альфа Защита{% endblock %}
 {% block content %}
-    <h1>Вход</h1>
-    {% if error %}<p role="alert">{{ error }}</p>{% endif %}
-    <form method="post" action="{% url 'accounts:login' %}">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Войти</button>
-    </form>
+<div class="auth-page">
+    <div class="page-heading"><h1>Вход</h1><p>Войдите, чтобы открыть свою историю проверок и операций.</p></div>
+    <div class="panel">
+        {% if error %}<p class="notice notice--error" role="alert">{{ error }}</p>{% endif %}
+        <form method="post" action="{% url 'accounts:login' %}">
+            {% csrf_token %}
+            {% include "includes/form_fields.html" %}
+            <button type="submit">Войти</button>
+        </form>
+    </div>
+    <p>Нет аккаунта? <a href="{% url 'accounts:register' %}">Зарегистрироваться</a></p>
+</div>
 {% endblock %}

@@ -1,24 +1,35 @@
+{% load static %}
 <!doctype html>
 <html lang="ru">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Альфа Защита{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/site.css' %}">
 </head>
 <body>
-    <nav>
-        <a href="{% url 'home' %}">Главная</a>
-        {% if user.is_authenticated %}
-        <a href="{% url 'accounts:profile' %}">Аккаунт</a>
-        <a href="{% url 'checks:history' %}">История проверок</a>
-        <a href="{% url 'transactions:history' %}">История операций и CSV</a>
-        {% else %}
-        <a href="{% url 'accounts:login' %}">Вход</a>
-        <a href="{% url 'accounts:register' %}">Регистрация</a>
-        {% endif %}
-    </nav>
-    <main>
+    <a class="skip-link" href="#content">Перейти к содержимому</a>
+    <header class="site-header">
+        <div class="shell header-row">
+            <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">А</span>Альфа Защита</a>
+            <nav class="nav" aria-label="Основная навигация">
+                <a href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'new' %}aria-current="page"{% endif %}>Проверить</a>
+                {% if user.is_authenticated %}
+                <a href="{% url 'checks:history' %}" {% if request.resolver_match.url_name == 'history' and request.resolver_match.namespace == 'checks' or request.resolver_match.url_name == 'detail' %}aria-current="page"{% endif %}>История проверок</a>
+                <a href="{% url 'transactions:history' %}" {% if request.resolver_match.namespace == 'transactions' %}aria-current="page"{% endif %}>Операции и CSV</a>
+                <a href="{% url 'accounts:profile' %}" {% if request.resolver_match.namespace == 'accounts' %}aria-current="page"{% endif %}>Аккаунт</a>
+                {% else %}
+                <a href="{% url 'accounts:login' %}" {% if request.resolver_match.url_name == 'login' %}aria-current="page"{% endif %}>Вход</a>
+                <a href="{% url 'accounts:register' %}" {% if request.resolver_match.url_name == 'register' %}aria-current="page"{% endif %}>Регистрация</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+    <main class="shell" id="content">
         {% block content %}{% endblock %}
     </main>
+    <footer class="site-footer">
+        <div class="shell"><p>Альфа Защита · Помогает оценить ситуацию до действия. Отсутствие признаков риска не гарантирует безопасность.</p></div>
+    </footer>
 </body>
 </html>
