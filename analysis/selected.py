@@ -2,6 +2,7 @@ import hashlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import urlsplit
 
 import numpy as np
 import torch
@@ -85,7 +86,7 @@ class CNNModel(URLModel):
         self.model.load_state_dict(state["state_dict"], strict=True)
         self.model.eval().requires_grad_(False)
         catalogue = json.dumps(self.catalogue, sort_keys=True, ensure_ascii=False).encode("utf-8")
-        self.analyzer_version = analyzer_version + "-" + hashlib.sha256(catalogue).hexdigest()[:12]
+        self.analyzer_version = analyzer_version + "-trim-path-slash-v1-" + hashlib.sha256(catalogue).hexdigest()[:12]
 
     @torch.inference_mode()
     def scores(self, urls):
@@ -94,7 +95,11 @@ class CNNModel(URLModel):
             raise ValueError("Нужен список URL")
         encoded = np.zeros((len(urls), 256), dtype=np.int64)
         for index, url in enumerate(urls):
-            values = [ord(char) + 1 if ord(char) < 128 else 129 for char in url.strip()[:256]]
+            value = url.strip()
+            parsed = urlsplit(value)
+            if parsed.path.endswith("/"):
+                value = parsed._replace(path=parsed.path.removesuffix("/")).geturl()
+            values = [ord(char) + 1 if ord(char) < 128 else 129 for char in value[:256]]
             encoded[index, :len(values)] = values
         if not len(encoded):
             return np.empty(0, dtype=np.float32)
