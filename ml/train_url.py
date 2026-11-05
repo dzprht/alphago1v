@@ -60,7 +60,7 @@ def validation_metrics(labels, scores):
 
 
 def read_provenance(path, train_info, validation_info):
-    # сверяет подготовленные файлы с компактным описанием источника
+    # сверяет хеши файлов и правила обработки ссылок
     raw = Path(path).read_bytes()
     try:
         manifest = json.loads(raw)

@@ -27,7 +27,7 @@ class Turn:
 
 
 def feature_vector(values, names):
-    # собирает значения и маски для итоговой модели
+    # записывает значения и отмечает какие из них известны
     selected = [values.get(name) for name in names]
     if any(value is not None and not isfinite(value) for value in selected):
         raise ValueError("Признаки должны быть конечными числами или None")

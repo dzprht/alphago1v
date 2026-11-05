@@ -148,7 +148,9 @@ def assemble_result(rows, *, thresholds, versions):
                 limitations.append("Для части признаков недоступно место в исходном материале")
                 limited = True
                 continue
-            group = ("transfer" if values["mode=transfer"] else row.get("speaker") or f"target-{index}") if key.startswith("text_") else None
+            group = None
+            if key.startswith("text_"):
+                group = "transfer" if values["mode=transfer"] else row.get("speaker") or f"target-{index}"
             identity = (key, group, json.dumps(source, ensure_ascii=False, sort_keys=True))
             severity = "banner" if key in banner_features else "remark"
             existing = next((item for item in findings if item["feature"] == key

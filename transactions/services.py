@@ -22,18 +22,19 @@ def save_transactions(user, rows, checksum="", *, replace=False):
     if not rows:
         raise ValidationError("Добавьте хотя бы одну операцию")
     dates = [row["occurred_at"] for row in rows]
+    period_start, period_end = min(dates), max(dates)
 
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=user.pk)
         if replace:
             TransactionImport.objects.filter(user=user).delete()
         history, created = TransactionImport.objects.get_or_create(user=user, defaults={
-            "row_count": 0, "period_start": min(dates), "period_end": max(dates),
+            "row_count": 0, "period_start": period_start, "period_end": period_end,
             "file_sha256": checksum,
         })
         history.row_count += len(rows)
-        history.period_start = min(history.period_start, min(dates))
-        history.period_end = max(history.period_end, max(dates))
+        history.period_start = min(history.period_start, period_start)
+        history.period_end = max(history.period_end, period_end)
         if not created:
             history.file_sha256 = ""
         history.save(update_fields=["row_count", "period_start", "period_end", "file_sha256"])

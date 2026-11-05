@@ -48,7 +48,7 @@ RISK_PROCESSING = {
 
 def risk_features(mode, *, text=None, url=None, transfer=None, fields=None,
                   extraction_status="unknown", order_known=False):
-    # собирает признаки одной целевой реплики для итогового дерева
+    # собирает признаки просьбы ссылки и истории переводов
     fields = fields or {}
     values, refs = {}, {}
     for result, names in (

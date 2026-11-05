@@ -30,16 +30,16 @@ def read_jsonl(path):
 
 
 def read_rows(path, split):
-    # проверяет происхождение признаков и независимость групп внутри файла
+    # проверяет группы и источник прогнозов для обучения
     if split not in ("train", "validation"):
         raise ValueError("Обучение принимает только train и validation")
     rows, checksum = read_jsonl(path)
     features, labels, seen, cases, groups = [], [], set(), {}, {}
     versions = {"text": set(), "url": set()}
     fold_models = {}
+    origin = "oof" if split == "train" else "heldout"
     for number, row in enumerate(rows, 1):
         error = f"Строка {number}: "
-        origin = "oof" if split == "train" else "heldout"
         if row.get("split") != split or row.get("prediction_origin") != origin:
             raise ValueError(error + f"нужны split={split} и prediction_origin={origin}")
         if any(not isinstance(row.get(name), str) or not row[name].strip() for name in ("case_id", "group_id")):
@@ -83,7 +83,7 @@ def read_rows(path, split):
     known = [label for label in labels if label is not None]
     if set(known) != {0, 1, 2}:
         raise ValueError(f"Часть {split} должна содержать три известных класса риска")
-    folds = sorted({row.get("fold") for row in rows if row.get("fold") is not None})
+    folds = sorted(fold_models)
     if split == "train" and len(folds) < 2:
         raise ValueError("Для OOF нужны хотя бы два folds")
     if split == "validation" and any(len(values) != 1 for values in versions.values()):
@@ -97,7 +97,7 @@ def read_rows(path, split):
 
 
 def validation_metrics(model, rows, labels):
-    # считает качество класса отдельно от отказов по недостаточности
+    # считает качество и долю ответов без отказа
     known = np.asarray([label is not None for label in labels])
     selected = [row for row, available in zip(rows, known) if available]
     targets = np.asarray([label for label in labels if label is not None])
@@ -114,7 +114,7 @@ def validation_metrics(model, rows, labels):
 
 
 def main():
-    # обучает итоговое дерево без запуска нижних моделей
+    # обучает дерево на заранее рассчитанных признаках
     parser = argparse.ArgumentParser(description="Обучение дерева по готовым OOF признакам")
     parser.add_argument("train", type=Path)
     parser.add_argument("output_dir", type=Path)

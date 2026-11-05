@@ -34,10 +34,10 @@ def load_analyzer(directory):
             raise ValueError("Неизвестный формат выбранных моделей")
         files = artifact_files(directory, SELECTED_FILES, manifest["files"])
         checksums = {name: meta["sha256"] for name, meta in files.items()}
-        calibration = {"thresholds": json.loads((directory / "thresholds.json").read_text(encoding="utf-8"))}
+        thresholds = json.loads((directory / "thresholds.json").read_text(encoding="utf-8"))
     else:
         calibration = json.loads((directory / "calibration.json").read_text(encoding="utf-8"))
-    thresholds = calibration["thresholds"]
+        thresholds = calibration["thresholds"]
     if not isinstance(thresholds, dict) or set(thresholds) != THRESHOLD_NAMES or any(
         type(value) not in (int, float) or not 0 <= value <= 1 for value in thresholds.values()
     ):

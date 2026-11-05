@@ -209,8 +209,8 @@ class URLModel:
             info.update(brand_signals(info, expected_site, self.catalogue))
             info["score"] = float(score)
             rows.append(info)
-        values = {name: None for name in ("url_score", "brand_mismatch", "has_userinfo", "host_is_ip")}
-        refs = {name: None for name in values}
+        values = dict.fromkeys(("url_score", "brand_mismatch", "has_userinfo", "host_is_ip"))
+        refs = dict.fromkeys(values)
         for name in values:
             candidates = [row for row in rows if name != "brand_mismatch" or row[name] is not None]
             if not candidates:

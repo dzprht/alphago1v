@@ -11,7 +11,7 @@ from analysis.text import E5Encoder, TEXT_LABELS, TextModel, prepare_fragments, 
 
 
 def read_rows(path, split):
-    # проверяет строки и сохраняет сведения об исходном файле
+    # читает размеченные тексты и проверяет поля
     raw = Path(path).read_bytes()
     rows, seen, cases = [], set(), {}
     for line_number, line in enumerate(raw.decode("utf-8-sig").splitlines(), 1):
@@ -110,7 +110,7 @@ def validation_metrics(labels, scores):
 
 
 def main():
-    # обучает классификаторы и сохраняет результат без вывода исходных текстов
+    # обучает текстовую модель и сохраняет веса и метрики
     parser = argparse.ArgumentParser(description="Обучение семи текстовых классификаторов")
     parser.add_argument("train", type=Path)
     parser.add_argument("output_dir", type=Path)

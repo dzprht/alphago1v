@@ -12,7 +12,7 @@ from ml.prepare_risk import case_domains, read_scenarios
 
 
 def score_cases(scenarios, analyzer, versions, split):
-    # получает оценки независимой части без обучения и подбора порогов
+    # считает оценки признаков на калибровке или тесте
     if split not in ("calibration", "test"):
         raise ValueError("Оценки готовятся только для calibration или test")
     selected = [row for row in scenarios if row["split"] == split]
@@ -49,7 +49,7 @@ def score_cases(scenarios, analyzer, versions, split):
 
 
 def main():
-    # сохраняет оценки выбранной части без использования теста для калибровки
+    # сохраняет оценки выбранной части набора
     parser = argparse.ArgumentParser(description="Оценки признаков для calibration или финального test")
     parser.add_argument("scenarios", type=Path)
     parser.add_argument("model_dir", type=Path)

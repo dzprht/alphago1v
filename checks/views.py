@@ -104,15 +104,13 @@ def detail_view(request, check_id):
             return HttpResponseBadRequest("Для отзыва или согласия нужен готовый результат")
         action = request.POST.get("action")
         if action == "feedback":
-            feedback_form = save_check_feedback(request.user, check_id, request.POST)
-            if feedback_form.is_valid():
-                return redirect("checks:detail", check_id=check_id)
+            form = feedback_form = save_check_feedback(request.user, check_id, request.POST)
         elif action == "consent":
-            consent_form = save_training_consent(request.user, check_id, request.POST)
-            if consent_form.is_valid():
-                return redirect("checks:detail", check_id=check_id)
+            form = consent_form = save_training_consent(request.user, check_id, request.POST)
         else:
             return HttpResponseBadRequest("Неизвестное действие")
+        if form.is_valid():
+            return redirect("checks:detail", check_id=check_id)
 
     feedback = getattr(check, "feedback", None)
     training_allowed = consent_is_current(getattr(check, "training_consent", None))

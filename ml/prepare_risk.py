@@ -21,12 +21,12 @@ SPLITS = ("train", "validation", "calibration", "test")
 
 class CachedEncoder:
     def __init__(self, encoder):
-        # сохраняет неизменяемый энкодер и готовые векторы текстов
+        # сохраняет энкодер и кеш векторов
         self.encoder, self.identity, self.tokenizer = encoder, encoder.identity, encoder.tokenizer
         self.cache = {}
 
     def encode(self, texts):
-        # не считает одинаковые замороженные векторы заново в каждом fold
+        # считает векторы только для новых текстов
         missing = list(dict.fromkeys(text for text in texts if text not in self.cache))
         if missing:
             self.cache.update(zip(missing, self.encoder.encode(missing)))
@@ -150,7 +150,7 @@ def plan_folds(scenarios, text_rows, url_rows, folds=5, heldout_splits=("validat
 
 
 def prepare_features(plans, output_dir, encoder, source_info):
-    # сохраняет OOF признаки и отдельный итоговый комплект нижних моделей
+    # считает признаки на отложенных группах и сохраняет модели
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=False)
     outputs = {name: [] for name in SPLITS}
@@ -201,7 +201,7 @@ def prepare_features(plans, output_dir, encoder, source_info):
 
 
 def main():
-    # готовит признаки только по явно указанным размеченным файлам
+    # готовит признаки из размеченных сценариев
     parser = argparse.ArgumentParser(description="OOF признаки риска с исключением групп и доменов")
     parser.add_argument("scenarios", type=Path)
     parser.add_argument("text_train", type=Path)
