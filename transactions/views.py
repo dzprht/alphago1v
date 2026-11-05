@@ -9,12 +9,12 @@ from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from transactions.forms import MAX_MANUAL_ROWS, ManualTransactionFormSet, TransactionUploadForm
+from transactions.forms import ImportModeForm, MAX_MANUAL_ROWS, ManualTransactionFormSet, TransactionUploadForm
 from transactions.services import (
     delete_user_transactions,
     get_user_transactions,
     import_transactions,
-    replace_transactions,
+    save_transactions,
 )
 
 
@@ -29,6 +29,7 @@ def history_view(request):
         files=request.FILES if action == "csv" else None,
     )
     manual_data = request.POST if action in ("manual", "add_row") else None
+    manual_options = ImportModeForm(manual_data, prefix="manual")
     if action == "add_row":
         manual_data = request.POST.copy()
         submitted = ManualTransactionFormSet(manual_data, prefix="rows")
@@ -37,14 +38,14 @@ def history_view(request):
             manual_data["rows-TOTAL_FORMS"] = str(count)
             manual_data.setdefault(f"rows-{count - 1}-direction", "outgoing")
     manual_forms = ManualTransactionFormSet(manual_data, prefix="rows")
-    if action == "manual" and manual_forms.is_valid():
+    if action == "manual" and manual_forms.is_valid() and manual_options.is_valid():
         rows = [item.cleaned_data["operation"] for item in manual_forms
                 if item.cleaned_data and not item.cleaned_data.get("DELETE")]
-        replace_transactions(request.user, rows)
+        save_transactions(request.user, rows, replace=manual_options.cleaned_data["replace"])
         return redirect(reverse("transactions:history") + "?imported=1")
     if action == "csv" and form.is_valid():
         try:
-            import_transactions(request.user, form.cleaned_data["file"])
+            import_transactions(request.user, form.cleaned_data["file"], replace=form.cleaned_data["replace"])
         except ValidationError as error:
             form.add_error("file", error)
         else:
@@ -59,6 +60,7 @@ def history_view(request):
         {
             "form": form,
             "manual_forms": manual_forms,
+            "manual_options": manual_options,
             "max_manual_rows": MAX_MANUAL_ROWS,
             "transactions": transactions,
             "imported": request.GET.get("imported") == "1",

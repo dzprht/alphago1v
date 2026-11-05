@@ -7,6 +7,7 @@ class Check(models.Model):
         TEXT = "text", "Текст"
         URL = "url", "Ссылка"
         AUDIO = "audio", "Аудио"
+        QR = "qr", "QR-код"
         SCREENSHOT = "screenshot", "Скриншот"
         TRANSFER = "transfer", "Перевод"
 
@@ -34,7 +35,7 @@ class Check(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(
-                    kind__in=["text", "url", "audio", "screenshot", "transfer"]
+                    kind__in=["text", "url", "audio", "qr", "screenshot", "transfer"]
                 ),
                 name="check_kind_valid",
             ),

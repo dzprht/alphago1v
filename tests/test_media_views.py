@@ -1,7 +1,6 @@
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import Mock
-import wave
 
 import pytest
 from django.contrib.sessions.models import Session
@@ -24,11 +23,6 @@ TEXT = "Назовите код из сообщения"
 def media_upload(kind):
     # готовит небольшой файл в разрешенном формате
     stream = BytesIO()
-    if kind == "audio":
-        with wave.open(stream, "wb") as audio:
-            audio.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
-            audio.writeframes(b"\0\0" * 16000)
-        return SimpleUploadedFile("call.wav", stream.getvalue(), content_type="audio/wav")
     Image.new("RGB", (640, 300), "white").save(stream, format="PNG")
     return SimpleUploadedFile("chat.png", stream.getvalue(), content_type="image/png")
 
@@ -65,8 +59,6 @@ class MediaStub:
                 "extracted_text": "" if self.status == "error" else TEXT,
                 "limitations": ["Часть записи не распознана"] if self.status == "partial" else []}
 
-    recognize = extract
-
 
 @pytest.fixture
 def configured_media(monkeypatch, settings):
@@ -81,7 +73,7 @@ def configured_media(monkeypatch, settings):
     return analyzer, media, loader, media_loader
 
 
-@pytest.mark.parametrize("kind,field", [("audio", "audio"), ("screenshot", "image")])
+@pytest.mark.parametrize("kind,field", [("screenshot", "image")])
 @pytest.mark.parametrize("authenticated", [False, True])
 def test_media_reaches_rules_and_temporary_file_is_removed(client, configured_media, kind, field, authenticated):
     # проверяет загрузку результат и удаление файла у гостя и аккаунта
@@ -110,12 +102,12 @@ def test_media_reaches_rules_and_temporary_file_is_removed(client, configured_me
 def test_invalid_media_and_missing_weights_do_not_create_checks(client, configured_media):
     # отклоняет плохой файл до моделей и отсутствие весов до сохранения
     analyzer, media, loader, media_loader = configured_media
-    url = reverse("checks:new", args=["audio"])
-    assert client.post(url, {"audio": SimpleUploadedFile("call.wav", b"not wav")}).status_code == 400
+    url = reverse("checks:new", args=["screenshot"])
+    assert client.post(url, {"image": SimpleUploadedFile("bad.png", b"not png")}).status_code == 400
     loader.assert_not_called()
     media_loader.assert_not_called()
     media_loader.side_effect = FileNotFoundError("private model path")
-    response = client.post(url, {"audio": media_upload("audio")})
+    response = client.post(url, {"image": media_upload("screenshot")})
     assert response.status_code == 503 and Check.objects.count() == Session.objects.count() == 0
     assert "private model path" not in response.content.decode() and media.paths == []
 
@@ -130,7 +122,7 @@ def test_media_failures_remove_temporary_files(client, configured_media, failure
         media.failure = True
     else:
         analyzer.analyze = Mock(side_effect=RuntimeError("private analyzer details"))
-    response = client.post(reverse("checks:new", args=["audio"]), {"audio": media_upload("audio")})
+    response = client.post(reverse("checks:new", args=["screenshot"]), {"image": media_upload("screenshot")})
     assert response.status_code == 503 and response.context["check"].status == Check.Status.FAILED
     assert len(media.paths) == 1 and not media.paths[0].exists() and not media.paths[0].parent.exists()
     assert "private" not in response.content.decode()
@@ -141,13 +133,13 @@ def test_partial_media_keeps_warning_and_csrf_prevents_processing(client, config
     # сохраняет найденное при неполной записи и проверяет токен загрузки
     analyzer, media, loader, media_loader = configured_media
     media.status = "partial"
-    url = reverse("checks:new", args=["audio"])
-    response = client.post(url, {"audio": media_upload("audio")})
+    url = reverse("checks:new", args=["screenshot"])
+    response = client.post(url, {"image": media_upload("screenshot")})
     result = response.context["check"].result
     assert response.status_code == 200 and result["status"] == "partial"
     assert result["warning"] and result["sufficiency"] == "limited"
     assert "Часть записи не распознана" in result["limitations"]
     protected = Client(enforce_csrf_checks=True)
-    assert protected.post(url, {"audio": media_upload("audio")}).status_code == 403
+    assert protected.post(url, {"image": media_upload("screenshot")}).status_code == 403
     assert loader.call_count == media_loader.call_count == 1
     assert Check.objects.count() == Session.objects.count() == 0

@@ -68,6 +68,7 @@ DATABASES = {
         "PASSWORD": os.environ["POSTGRES_PASSWORD"],
         "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
         "PORT": os.getenv("POSTGRES_PORT", "5433"),
+        "OPTIONS": {"connect_timeout": 5},
     }
 }
 

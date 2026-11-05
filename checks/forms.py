@@ -1,6 +1,5 @@
 from decimal import Decimal
 from io import BytesIO
-import wave
 
 from django import forms
 from django.core.files import File
@@ -8,9 +7,10 @@ from django.core.validators import URLValidator
 from PIL import Image, UnidentifiedImageError
 
 from checks.media_limits import (
-    MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, SAMPLE_RATE,
+    MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS,
 )
 from checks.models import Check, CheckFeedback
+from analysis.qr import decode_qr
 
 
 TRAINING_CONSENT_VERSION = "2026-10-28"
@@ -20,7 +20,7 @@ YES_NO_UNKNOWN = [("unknown", "Неизвестно"), ("yes", "Да"), ("no", "
 
 class CheckForm(forms.Form):
     context = forms.CharField(
-        label="Дополнительные обстоятельства", required=False, widget=forms.Textarea
+        label="Дополнительные обстоятельства", required=False, max_length=2000, widget=forms.Textarea
     )
 
     def get_input_data(self):
@@ -37,7 +37,7 @@ class CheckForm(forms.Form):
 
 class TextCheckForm(CheckForm):
     kind = Check.Kind.TEXT
-    text = forms.CharField(label="Текст сообщения или диалога", widget=forms.Textarea)
+    text = forms.CharField(label="Текст сообщения или диалога", max_length=10000, widget=forms.Textarea)
     field_order = ["text", "context"]
 
 
@@ -45,51 +45,20 @@ class URLCheckForm(CheckForm):
     kind = Check.Kind.URL
     url = forms.CharField(
         label="Ссылка",
+        max_length=2048,
         validators=[URLValidator(schemes=["http", "https"])],
         help_text="Полный адрес с http:// или https://",
     )
     message = forms.CharField(
-        label="Сопроводительное сообщение", required=False, widget=forms.Textarea
+        label="Сопроводительное сообщение", required=False, max_length=10000, widget=forms.Textarea
     )
     expected_site = forms.CharField(
-        label="Ожидаемый сайт или организация", required=False,
+        label="Ожидаемый сайт или организация", required=False, max_length=255,
         widget=forms.TextInput(attrs={"list": "expected-organizations"}),
         help_text="Выберите организацию или введите ее название или адрес сайта. "
                   "Совпадение домена не подтверждает личность отправителя.",
     )
     field_order = ["url", "message", "expected_site", "context"]
-
-
-class AudioCheckForm(CheckForm):
-    kind = Check.Kind.AUDIO
-    audio = forms.FileField(
-        label="Аудиозапись",
-        widget=forms.ClearableFileInput(attrs={"accept": ".wav,audio/wav"}),
-        help_text="WAV PCM 16 бит, 16000 Гц, моно или стерео. До 60 секунд и 4 МиБ. "
-                  "Участники определяются автоматически.",
-    )
-    field_order = ["audio", "context"]
-
-    def clean_audio(self):
-        # проверяет формат длительность и целостность записи
-        upload = self.cleaned_data["audio"]
-        if upload.size > MAX_AUDIO_BYTES:
-            raise forms.ValidationError("Аудиозапись должна быть не больше 4 МиБ")
-        try:
-            with wave.open(upload, "rb") as audio:
-                channels, frames = audio.getnchannels(), audio.getnframes()
-                if (channels not in (1, 2) or audio.getsampwidth() != 2
-                        or audio.getframerate() != SAMPLE_RATE or audio.getcomptype() != "NONE"):
-                    raise forms.ValidationError("Нужен WAV PCM 16 бит 16000 Гц с одним или двумя каналами")
-                if not 0 < frames <= MAX_AUDIO_SECONDS * SAMPLE_RATE:
-                    raise forms.ValidationError("Запись должна быть непустой и длиться не больше 60 секунд")
-                if len(audio.readframes(frames)) != frames * channels * 2:
-                    raise forms.ValidationError("Аудиозапись обрезана или повреждена")
-        except (wave.Error, EOFError, OSError):
-            raise forms.ValidationError("Не удалось прочитать WAV запись") from None
-        finally:
-            upload.seek(0)
-        return upload
 
 
 class ScreenshotCheckForm(CheckForm):
@@ -121,6 +90,37 @@ class ScreenshotCheckForm(CheckForm):
         return upload
 
 
+class QRCheckForm(ScreenshotCheckForm):
+    kind = Check.Kind.QR
+    image = forms.FileField(
+        label="Изображение QR-кода",
+        widget=forms.ClearableFileInput(attrs={"accept": ".png,.jpg,.jpeg,image/png,image/jpeg"}),
+        help_text="Один QR-код со ссылкой. PNG или JPEG, до 5 МиБ и 4 миллионов пикселей.",
+    )
+    message = forms.CharField(label="Сопроводительное сообщение", required=False,
+                              max_length=10000, widget=forms.Textarea)
+    expected_site = forms.CharField(label="Ожидаемый сайт или организация", required=False,
+                                    max_length=255, widget=forms.TextInput(attrs={"list": "expected-organizations"}))
+    field_order = ["image", "message", "expected_site", "context"]
+
+    def clean_image(self):
+        # проверяет изображение и достает ссылку до запуска модели
+        upload = super().clean_image()
+        try:
+            self.decoded_url = decode_qr(upload.read())
+        except ValueError as error:
+            raise forms.ValidationError(str(error)) from None
+        finally:
+            upload.seek(0)
+        return upload
+
+    def get_input_data(self):
+        # добавляет прочитанную ссылку к данным проверки
+        data = super().get_input_data()
+        data["url"] = self.decoded_url
+        return data
+
+
 class TransferCheckForm(CheckForm):
     kind = Check.Kind.TRANSFER
     context = None
@@ -144,7 +144,7 @@ class TransferCheckForm(CheckForm):
     )
     recipient = forms.CharField(label="Обозначение получателя", max_length=100, required=False)
     message = forms.CharField(
-        label="Текст просьбы о переводе", required=False, widget=forms.Textarea
+        label="Текст просьбы о переводе", required=False, max_length=10000, widget=forms.Textarea
     )
     requester = forms.ChoiceField(
         label="Кто попросил перевод", required=False, initial="unknown",
@@ -196,7 +196,7 @@ class CheckFeedbackForm(forms.Form):
         choices=[("", "Выберите исход"), *CheckFeedback.Outcome.choices],
     )
     comment = forms.CharField(
-        label="Комментарий", required=False, widget=forms.Textarea
+        label="Комментарий", required=False, max_length=2000, widget=forms.Textarea
     )
 
 

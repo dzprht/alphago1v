@@ -1,5 +1,4 @@
 from io import StringIO
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -9,18 +8,18 @@ from django.core.management.base import CommandError
 from checks.management.commands import check_models
 
 
-@pytest.mark.parametrize("mode", ["ready", "missing", "partial"])
-def test_full_model_check_requires_all_models_and_diarization(monkeypatch, settings, mode):
-    # проверяет готовый комплект и отказ без распознавания
+@pytest.mark.parametrize("ready", [False, True])
+def test_full_model_check_requires_ocr_but_not_audio(monkeypatch, settings, ready):
+    # проверяет готовность моделей без загрузки распознавания речи
     settings.ANALYZER_DIR = "/test/models"
     monkeypatch.setattr(check_models, "load_analyzer", Mock(return_value=object()))
-    audio = None if mode == "missing" else SimpleNamespace(diarizer=object() if mode == "ready" else None)
-    media = Mock(side_effect=[audio, object()])
+    media = Mock(return_value=object() if ready else None)
     monkeypatch.setattr(check_models, "load_media_model", media)
     output = StringIO()
-    if mode == "ready":
+    if ready:
         call_command("check_models", stdout=output)
-        assert "готовы к запуску" in output.getvalue() and media.call_count == 2
+        assert "QR" in output.getvalue() and "готовы к запуску" in output.getvalue()
     else:
         with pytest.raises(CommandError, match="не готов"):
             call_command("check_models", stdout=output)
+    media.assert_called_once_with("screenshot", settings.ANALYZER_DIR)

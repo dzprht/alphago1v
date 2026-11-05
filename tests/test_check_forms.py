@@ -1,6 +1,6 @@
 import json
 from io import BytesIO
-import wave
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -9,7 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from accounts.models import User
 from checks.forms import (
-    AudioCheckForm,
+    QRCheckForm,
     ScreenshotCheckForm,
     TextCheckForm,
     TRANSFER_QUESTIONS,
@@ -25,7 +25,7 @@ from checks.services import create_check
     [
         (TextCheckForm, Check.Kind.TEXT, {"text": "Сообщение"}),
         (URLCheckForm, Check.Kind.URL, {"url": "https://example.com/"}),
-        (AudioCheckForm, Check.Kind.AUDIO, {}),
+        (QRCheckForm, Check.Kind.QR, {}),
         (ScreenshotCheckForm, Check.Kind.SCREENSHOT, {}),
         (TransferCheckForm, Check.Kind.TRANSFER, {"amount": "123.45", "purpose": "unknown"}),
     ],
@@ -33,13 +33,9 @@ from checks.services import create_check
 def test_check_forms_prepare_valid_data(form_class, kind, data):
     # проверяет обязательные поля и подготовку данных
     files = {}
-    if kind == Check.Kind.AUDIO:
-        buffer = BytesIO()
-        with wave.open(buffer, "wb") as audio:
-            audio.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
-            audio.writeframes(b"\0" * 3200)
-        content = buffer.getvalue()
-        files["audio"] = SimpleUploadedFile("call.wav", content)
+    if kind == Check.Kind.QR:
+        content = (Path(__file__).resolve().parents[1] / "examples/demo/qr-ordinary.png").read_bytes()
+        files["image"] = SimpleUploadedFile("qr.png", content, content_type="image/png")
     elif kind == Check.Kind.SCREENSHOT:
         buffer = BytesIO()
         Image.new("RGB", (1, 1), "white").save(buffer, format="PNG")
@@ -74,7 +70,7 @@ def test_check_forms_prepare_valid_data(form_class, kind, data):
     [
         (TextCheckForm, {"text": "   "}, "text"),
         (URLCheckForm, {"url": "ftp://example.com/"}, "url"),
-        (AudioCheckForm, {"audio": "call.wav"}, "audio"),
+        (QRCheckForm, {}, "image"),
         (ScreenshotCheckForm, {}, "image"),
         (TransferCheckForm, {"amount": "0", "purpose": "unknown"}, "amount"),
         (TransferCheckForm, {"amount": "1.001", "purpose": "unknown"}, "amount"),
@@ -86,7 +82,7 @@ def test_check_forms_prepare_valid_data(form_class, kind, data):
 def test_check_forms_reject_invalid_data(form_class, data, error_field):
     # проверяет ошибки во входных данных
     files = {}
-    if form_class is ScreenshotCheckForm:
+    if form_class in (ScreenshotCheckForm, QRCheckForm):
         files["image"] = SimpleUploadedFile("chat.png", b"not an image", content_type="image/png")
 
     form = form_class(data=data, files=files)
@@ -101,6 +97,23 @@ def test_invalid_form_cannot_prepare_data():
 
     with pytest.raises(ValueError):
         form.get_input_data()
+
+
+@pytest.mark.parametrize(("form_class", "field", "data", "prefix", "limit"), [
+    (TextCheckForm, "text", {}, "", 10000),
+    (TextCheckForm, "context", {"text": "Сообщение"}, "", 2000),
+    (URLCheckForm, "message", {"url": "https://example.com"}, "", 10000),
+    (URLCheckForm, "url", {}, "https://example.com/", 2048),
+    (URLCheckForm, "expected_site", {"url": "https://example.com"}, "", 255),
+    (TransferCheckForm, "message", {"amount": "1", "purpose": "unknown"}, "", 10000),
+])
+def test_forms_limit_text_before_analysis(form_class, field, data, prefix, limit):
+    # проверяет что большой текст не попадает в анализ
+    value = prefix + "x" * (limit - len(prefix))
+    assert form_class(data={**data, field: value}).is_valid()
+    form = form_class(data={**data, field: value + "x"})
+    assert not form.is_valid()
+    assert field in form.errors
 
 
 @pytest.mark.django_db

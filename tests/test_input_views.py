@@ -24,7 +24,7 @@ def test_home_and_five_forms_are_public(client, authenticated):
         client.force_login(User.objects.create_user(username="anna"))
     response = client.get(reverse("home"))
     assert response.status_code == 200
-    for kind in Check.Kind:
+    for kind in (Check.Kind.TEXT, Check.Kind.URL, Check.Kind.QR, Check.Kind.SCREENSHOT, Check.Kind.TRANSFER):
         url = reverse("checks:new", args=[kind])
         assert url in response.content.decode()
         page = client.get(url)
@@ -59,7 +59,7 @@ def test_input_errors_and_missing_analyzer_do_not_save_data(client, kind, data):
 
 def test_media_forms_accept_uploads_and_reject_invalid_files(client):
     # показывает формы загрузки и проверяет файлы до вызова моделей
-    for kind, field in (("audio", "audio"), ("screenshot", "image")):
+    for kind, field in (("qr", "image"), ("screenshot", "image")):
         url = reverse("checks:new", args=[kind])
         html = client.get(url).content.decode()
         assert 'enctype="multipart/form-data"' in html and "<fieldset disabled>" not in html
@@ -81,3 +81,5 @@ def test_input_csrf_methods_and_unknown_mode(client):
     assert client.post(reverse("home"), {}).status_code == 405
     assert client.put(url).status_code == 405
     assert client.get(reverse("checks:new", args=["unknown"])).status_code == 404
+    assert client.get(reverse("checks:new", args=["audio"])).status_code == 404
+    assert client.post(reverse("checks:new", args=["audio"]), {}).status_code == 404

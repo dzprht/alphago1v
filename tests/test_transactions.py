@@ -90,8 +90,8 @@ def test_import_replaces_only_own_history_and_keeps_check_snapshot():
     )
 
     content = (HEADER + ROW + ROW).encode()
-    imported = import_transactions(user, ContentFile(content))
-    repeated = import_transactions(user, ContentFile(content))
+    imported = import_transactions(user, ContentFile(content), replace=True)
+    repeated = import_transactions(user, ContentFile(content), replace=True)
 
     assert not TransactionImport.objects.filter(pk__in=[original.pk, imported.pk]).exists()
     assert TransactionImport.objects.count() == 2
@@ -115,7 +115,8 @@ def test_import_replaces_only_own_history_and_keeps_check_snapshot():
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("failure", ["invalid_csv", "write_error"])
-def test_failed_import_preserves_old_history(monkeypatch, failure):
+@pytest.mark.parametrize("replace", [False, True])
+def test_failed_import_preserves_old_history(monkeypatch, failure, replace):
     # проверяет сохранность истории при ошибке файла или записи
     user = User.objects.create_user(username="anna")
     old = import_transactions(user, ContentFile((HEADER + ROW).encode()))
@@ -133,7 +134,7 @@ def test_failed_import_preserves_old_history(monkeypatch, failure):
         expected_error = RuntimeError
 
     with pytest.raises(expected_error):
-        import_transactions(user, ContentFile(content.encode()))
+        import_transactions(user, ContentFile(content.encode()), replace=replace)
 
     assert TransactionImport.objects.get(user=user).pk == old.pk
     assert get_user_transactions(user) == old_rows
@@ -175,8 +176,9 @@ def test_history_cutoff_uses_operation_time_and_leaves_loaded_snapshot():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_concurrent_imports_do_not_mix_histories(monkeypatch):
-    # проверяет полную замену при одновременных загрузках
+@pytest.mark.parametrize("replace", [False, True])
+def test_concurrent_imports_keep_both_modes_atomic(monkeypatch, replace):
+    # проверяет добавление и замену при одновременных загрузках
     user = User.objects.create_user(username="anna")
     barrier = Barrier(2)
     original_reader = read_transactions_csv
@@ -192,7 +194,7 @@ def test_concurrent_imports_do_not_mix_histories(monkeypatch):
         try:
             owner = User.objects.get(pk=user.pk)
             content = (HEADER + ROW.replace("shop_1", recipient) * 2).encode()
-            import_transactions(owner, ContentFile(content))
+            import_transactions(owner, ContentFile(content), replace=replace)
         finally:
             connection.close()
 
@@ -202,5 +204,28 @@ def test_concurrent_imports_do_not_mix_histories(monkeypatch):
 
     history = TransactionImport.objects.get(user=user)
     rows = get_user_transactions(user)
-    assert history.row_count == len(rows) == 2
-    assert {row["recipient"] for row in rows} in [{"shop_a"}, {"shop_b"}]
+    assert history.row_count == len(rows) == (2 if replace else 4)
+    if replace:
+        assert {row["recipient"] for row in rows} in [{"shop_a"}, {"shop_b"}]
+    else:
+        assert {row["recipient"] for row in rows} == {"shop_a", "shop_b"}
+
+
+@pytest.mark.django_db
+def test_append_keeps_repeated_rows_and_updates_history_period():
+    # проверяет повторы и общий период после добавления строк
+    user = User.objects.create_user(username="anna")
+    content = (HEADER + ROW).encode()
+    history = import_transactions(user, ContentFile(content))
+    assert history.file_sha256 == sha256(content).hexdigest()
+    import_transactions(user, ContentFile(content))
+    dates = (HEADER + ROW.replace("2026-10-20", "2026-10-19")
+             + ROW.replace("2026-10-20", "2026-10-21")).encode()
+    appended = import_transactions(user, ContentFile(dates))
+    rows = get_user_transactions(user)
+    assert history.pk == appended.pk
+    assert appended.row_count == len(rows) == 4
+    assert rows[1] == rows[2]
+    assert appended.period_start == rows[-1]["occurred_at"]
+    assert appended.period_end == rows[0]["occurred_at"]
+    assert appended.file_sha256 == ""

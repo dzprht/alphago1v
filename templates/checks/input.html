@@ -3,9 +3,7 @@
 {% block content %}
 <div class="narrow">
     <div class="page-heading">
-        <p class="eyebrow">ПРОВЕРКА ОБРАЩЕНИЯ</p>
         <h1>{{ form.kind.label }}</h1>
-        <p>Заполните основные поля. Остальные сведения можно добавить, если они известны.</p>
     </div>
     {% if unavailable %}
     <div class="notice notice--warning" role="status"><strong>Анализ пока не подключен</strong><p>Проверка сейчас недоступна. Введенные данные не сохраняются.</p></div>

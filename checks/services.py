@@ -119,7 +119,8 @@ def run_check(user, kind, input_data, analyzer, *, upload=None, media_model=None
     check = create_check(user, kind, input_data)
     try:
         options = {"extraction": extract_upload(kind, upload, media_model)} if upload is not None else {}
-        result, snapshot = analyzer.analyze(kind, input_data, history, checked_at=check.created_at, **options)
+        analysis_kind = Check.Kind.URL if kind == Check.Kind.QR else kind
+        result, snapshot = analyzer.analyze(analysis_kind, input_data, history, checked_at=check.created_at, **options)
     except Exception as error:
         logger.error("Не удалось выполнить проверку %s %s", check.pk, type(error).__name__)
         return finish_check(check, error_message="Не удалось выполнить анализ. Попробуйте позже.")
@@ -127,7 +128,7 @@ def run_check(user, kind, input_data, analyzer, *, upload=None, media_model=None
         return finish_check(check, error_message="Не удалось распознать материал. Попробуйте другой файл.",
                             analyzer_version=result["analyzer_version"])
     return finish_check(check, result=result, analyzer_version=result["analyzer_version"],
-                        extracted_text=result.get("extracted_text", ""),
+                        extracted_text=input_data["url"] if kind == Check.Kind.QR else result.get("extracted_text", ""),
                         context_snapshot=snapshot if user.is_authenticated else {})
 
 

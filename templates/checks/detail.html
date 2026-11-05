@@ -44,6 +44,6 @@
         {% if consent_form.errors %}<p>Если форма была открыта давно, <a href="{% url 'checks:detail' check.pk %}">обновите страницу</a> и прочитайте текущие условия перед отправкой</p>{% endif %}
     </section>
     {% endif %}
-    <div class="actions"><a class="button" href="{% url 'checks:new' check.kind %}">Новая проверка</a><a href="{% url 'checks:history' %}">← В историю проверок</a></div>
+    <div class="actions">{% if check.kind != 'audio' %}<a class="button" href="{% url 'checks:new' check.kind %}">Новая проверка</a>{% else %}<a class="button" href="{% url 'home' %}">Новая проверка</a>{% endif %}<a href="{% url 'checks:history' %}">← В историю проверок</a></div>
 </div>
 {% endblock %}

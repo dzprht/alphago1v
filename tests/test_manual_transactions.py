@@ -48,7 +48,7 @@ def test_manual_import_replaces_only_own_history_and_ignores_deleted_row(client)
     client.force_login(user)
     data = manual_data(**{"rows-TOTAL_FORMS": "2", "rows-0-amount": "0.01",
                           "rows-0-recipient": "new_shop", "rows-1-DELETE": "on",
-                          "rows-1-amount": "wrong", "user_id": other.pk})
+                          "rows-1-amount": "wrong", "user_id": other.pk, "manual-replace": "on"})
     response = client.post(reverse("transactions:history"), data)
     assert response.status_code == 302
     assert response.url.endswith("?imported=1")
@@ -71,10 +71,11 @@ def test_manual_error_and_add_row_preserve_history_and_entered_data(client):
     assert response.status_code == 200
     assert "amount" in response.context["manual_forms"][0].errors
     assert response.context["manual_forms"][0]["amount"].value() == "1.001"
-    response = client.post(url, manual_data(action="add_row"))
+    response = client.post(url, manual_data(action="add_row", **{"manual-replace": "on"}))
     assert response.status_code == 200
     assert len(response.context["manual_forms"]) == 2
     assert response.context["manual_forms"][0]["recipient"].value() == "shop_1"
+    assert response.context["manual_options"]["replace"].value() is True
     forms = ManualTransactionFormSet(response.context["manual_forms"].data, prefix="rows")
     assert forms.is_valid(), forms.errors
     assert TransactionImport.objects.get(user=user).pk == original.pk
@@ -105,3 +106,19 @@ def test_manual_import_requires_login_and_csrf():
     client.force_login(user)
     assert client.post(url, manual_data()).status_code == 403
     assert not TransactionImport.objects.exists()
+
+
+@pytest.mark.django_db
+def test_manual_import_appends_by_default_and_keeps_duplicates(client):
+    # проверяет добавление ручной строки без удаления совпадений
+    user = User.objects.create_user(username="anna")
+    history = import_transactions(user, ContentFile((HEADER + ROW).encode()))
+    client.force_login(user)
+    response = client.get(reverse("transactions:history"))
+    assert not response.context["manual_options"]["replace"].value()
+    for _ in range(2):
+        assert client.post(reverse("transactions:history"), manual_data()).status_code == 302
+    rows = get_user_transactions(user)
+    assert len(rows) == 3 and rows[0] == rows[1] == rows[2]
+    history.refresh_from_db()
+    assert history.row_count == 3 and history.file_sha256 == ""

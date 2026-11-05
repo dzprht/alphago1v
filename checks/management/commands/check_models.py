@@ -1,3 +1,5 @@
+import cv2
+
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
@@ -13,12 +15,9 @@ class Command(BaseCommand):
             analyzer = load_analyzer(settings.ANALYZER_DIR)
             if analyzer is None:
                 raise ValueError("Не указан ANALYZER_DIR")
-            for kind in ("audio", "screenshot"):
-                model = load_media_model(kind, settings.ANALYZER_DIR)
-                if model is None:
-                    raise ValueError("Не настроено распознавание " + kind)
-                if kind == "audio" and model.diarizer is None:
-                    raise ValueError("Не подключено разделение голосов")
+            if load_media_model("screenshot", settings.ANALYZER_DIR) is None:
+                raise ValueError("Не настроено распознавание скриншотов")
+            cv2.QRCodeDetector()
         except Exception as error:
             raise CommandError("Комплект моделей не готов: " + str(error)) from error
-        self.stdout.write(self.style.SUCCESS("Текст URL аудио и скриншоты готовы к запуску"))
+        self.stdout.write(self.style.SUCCESS("Текст URL QR и скриншоты готовы к запуску"))

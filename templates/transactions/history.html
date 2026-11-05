@@ -2,25 +2,25 @@
 {% load static %}
 {% block title %}История операций — Альфа Защита{% endblock %}
 {% block content %}
-<div class="page-heading"><p class="eyebrow">ЛИЧНЫЕ ДАННЫЕ</p><h1>История операций</h1><p>Загрузите свою историю, чтобы учитывать привычные суммы и получателей при проверке перевода.</p></div>
+<div class="page-heading"><h1>История операций</h1></div>
 {% if imported %}<p class="notice notice--success" role="status">История загружена</p>{% endif %}
 {% if deleted %}<p class="notice notice--success" role="status">Загруженная история удалена</p>{% endif %}
 <section class="panel">
     <h2>Загрузка CSV</h2>
     <p><a href="{% url 'transactions:template' %}">Скачать шаблон с вымышленными операциями</a></p>
     <p class="muted">Замените примеры своими операциями. Поддерживается CSV в UTF-8 с разделителем ; до 2 МиБ и 10 000 операций.</p>
-    <div class="notice notice--warning">Новая загрузка полностью заменит прежнюю историю операций. При ошибке файла старые данные сохранятся.</div>
+    <p class="muted">Без галочки новые строки добавятся к истории, включая повторы. При ошибке старые данные сохранятся.</p>
     <form method="post" action="{% url 'transactions:history' %}" enctype="multipart/form-data">
         {% csrf_token %}
         <input type="hidden" name="action" value="csv">
         {% include "includes/form_fields.html" %}
-        <button type="submit">Загрузить и заменить историю</button>
+        <button type="submit">Загрузить операции</button>
     </form>
 </section>
 <section class="panel" id="manual-entry">
     <h2>Ввести операции вручную</h2>
     <p class="muted">Добавьте до {{ max_manual_rows }} операций. Дата и время указываются по Москве. Обозначение контрагента должно совпадать с тем, которое вы используете при проверке перевода.</p>
-    <div class="notice notice--warning">Сохранение полностью заменит прежнюю историю введенными строками. При ошибке старые данные сохранятся. Чтобы не сохранять строку, отметьте «Удалить».</div>
+    <p class="muted">Без галочки строки добавятся к истории, включая повторы. Чтобы не сохранять строку, отметьте «Удалить».</p>
     <form method="post" action="{% url 'transactions:history' %}#manual-entry" id="manual-history" data-max-rows="{{ max_manual_rows }}">
         {% csrf_token %}
         {{ manual_forms.management_form }}
@@ -34,9 +34,10 @@
             {% endfor %}
         </div>
         <p id="manual-limit" role="status"></p>
+        {% include "includes/form_fields.html" with form=manual_options %}
         <div class="actions">
             <button class="button--secondary" type="submit" name="action" value="add_row" id="add-row" formnovalidate>Добавить строку</button>
-            <button type="submit" name="action" value="manual">Сохранить и заменить историю</button>
+            <button type="submit" name="action" value="manual">Сохранить операции</button>
         </div>
     </form>
     <template id="manual-empty-row">

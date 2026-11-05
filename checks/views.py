@@ -10,8 +10,9 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from analysis.runtime import load_analyzer, load_media_model
 from analysis.url import CATALOGUE_PATH
+from checks.contacts import get_bank_contact
 from checks.forms import (
-    AudioCheckForm, CheckFeedbackForm, ScreenshotCheckForm, TextCheckForm,
+    QRCheckForm, CheckFeedbackForm, ScreenshotCheckForm, TextCheckForm,
     TrainingConsentForm, TransferCheckForm, URLCheckForm,
 )
 from checks.models import Check
@@ -28,7 +29,7 @@ from checks.services import (
 logger = logging.getLogger(__name__)
 CHECK_FORMS = {
     form.kind: form for form in (
-        TextCheckForm, URLCheckForm, AudioCheckForm, ScreenshotCheckForm, TransferCheckForm
+        TextCheckForm, URLCheckForm, QRCheckForm, ScreenshotCheckForm, TransferCheckForm
     )
 }
 
@@ -36,7 +37,7 @@ CHECK_FORMS = {
 @require_GET
 def home_view(request):
     # показывает доступные виды проверок
-    return render(request, "checks/home.html", {"kinds": Check.Kind.choices})
+    return render(request, "checks/home.html", {"kinds": [(kind, kind.label) for kind in CHECK_FORMS]})
 
 
 @never_cache
@@ -48,6 +49,7 @@ def input_view(request, kind):
         raise Http404
     form, status = form_class(), 200
     unavailable = not settings.ANALYZER_DIR
+    needs_ocr = kind == Check.Kind.SCREENSHOT
     if request.method == "POST":
         form = form_class(request.POST, request.FILES)
         status = 400
@@ -56,22 +58,23 @@ def input_view(request, kind):
             media_model = None
             try:
                 analyzer = load_analyzer(settings.ANALYZER_DIR)
-                if analyzer is not None and form.is_multipart():
+                if analyzer is not None and needs_ocr:
                     media_model = load_media_model(kind, settings.ANALYZER_DIR)
             except Exception as error:
                 logger.error("Не удалось загрузить анализатор %s", type(error).__name__)
                 analyzer = None
-            if analyzer is not None and (not form.is_multipart() or media_model is not None):
-                field = "audio" if kind == Check.Kind.AUDIO else "image"
-                upload = form.cleaned_data[field] if form.is_multipart() else None
+            if analyzer is not None and (not needs_ocr or media_model is not None):
+                upload = form.cleaned_data["image"] if needs_ocr else None
                 check = run_check(request.user, kind, form.get_input_data(), analyzer,
                                   upload=upload, media_model=media_model)
                 if request.user.is_authenticated:
                     return redirect("checks:detail", check_id=check.pk)
-                return render(request, "checks/guest_result.html", {"check": check},
+                return render(request, "checks/guest_result.html", {
+                    "check": check, "bank_contact": get_bank_contact(check.input_data),
+                },
                               status=200 if check.status == Check.Status.COMPLETED else 503)
             unavailable = True
-    organizations = json.loads(CATALOGUE_PATH.read_text(encoding="utf-8"))["brands"] if kind == Check.Kind.URL else []
+    organizations = json.loads(CATALOGUE_PATH.read_text(encoding="utf-8"))["brands"] if kind in (Check.Kind.URL, Check.Kind.QR) else []
     return render(request, "checks/input.html", {
         "form": form, "unavailable": unavailable, "organizations": organizations,
     }, status=status)
@@ -125,6 +128,7 @@ def detail_view(request, check_id):
         "checks/detail.html",
         {
             "check": check,
+            "bank_contact": get_bank_contact(check.input_data),
             "feedback": feedback,
             "feedback_form": feedback_form,
             "consent_form": consent_form,

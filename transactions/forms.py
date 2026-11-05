@@ -8,7 +8,11 @@ from transactions.validation import validate_transaction
 MAX_MANUAL_ROWS = 100
 
 
-class TransactionUploadForm(forms.Form):
+class ImportModeForm(forms.Form):
+    replace = forms.BooleanField(label="Заменить всю историю", required=False)
+
+
+class TransactionUploadForm(ImportModeForm):
     file = forms.FileField(label="История операций в CSV")
 
     def clean_file(self):

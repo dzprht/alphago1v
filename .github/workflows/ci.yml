@@ -3,13 +3,14 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -58,3 +59,50 @@ jobs:
 
       - name: Run tests
         run: uv run --no-sync pytest -q
+
+  deploy:
+    needs: tests
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 30
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+      SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+      SERVER_PATH: ${{ vars.SERVER_PATH }}
+      SERVER_PORT: ${{ vars.SERVER_PORT || '22' }}
+      HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -eu
+          [[ "$SERVER_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
+          [[ "$SERVER_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ "$SERVER_PORT" =~ ^[0-9]+$ ]]
+          [[ "$SERVER_PATH" =~ ^/[a-zA-Z0-9_./-]+$ ]]
+          test -n "$SERVER_SSH_KEY"
+          test -n "$SERVER_KNOWN_HOSTS"
+          [[ "$HEALTHCHECK_URL" == https://* ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+      - name: Deploy tested commit
+        shell: bash
+        run: |
+          set -eu
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+            -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" \
+            "cd '$SERVER_PATH' && test -z \"\$(git status --porcelain)\" && git fetch origin main && git checkout --detach '$GITHUB_SHA' && sh deploy/update.sh '$GITHUB_SHA'"
+
+      - name: Check public backend
+        run: python deploy/check_url.py "$HEALTHCHECK_URL"

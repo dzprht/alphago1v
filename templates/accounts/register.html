@@ -2,7 +2,7 @@
 {% block title %}Регистрация — Альфа Защита{% endblock %}
 {% block content %}
 <div class="auth-page">
-    <div class="page-heading"><h1>Регистрация</h1><p>Аккаунт сохранит результаты и позволит использовать свою историю операций.</p></div>
+    <div class="page-heading"><h1>Регистрация</h1></div>
     <div class="panel">
         <form method="post" action="{% url 'accounts:register' %}">
             {% csrf_token %}

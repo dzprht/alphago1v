@@ -183,3 +183,22 @@ def test_history_escapes_counterparty_id(client):
     html = response.content.decode()
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+@pytest.mark.parametrize("replace", [False, True])
+def test_csv_checkbox_selects_append_or_replace(client, replace):
+    # проверяет добавление по умолчанию и замену по галочке
+    user = User.objects.create_user(username="anna")
+    original = import_transactions(user, ContentFile((HEADER + ROW).encode()))
+    client.force_login(user)
+    url = reverse("transactions:history")
+    assert not client.get(url).context["form"]["replace"].value()
+    data = {"file": SimpleUploadedFile("history.csv", (HEADER + ROW).encode())}
+    if replace:
+        data["replace"] = "on"
+    assert client.post(url, data).status_code == 302
+    rows = get_user_transactions(user)
+    assert len(rows) == (1 if replace else 2)
+    if not replace:
+        assert rows[0] == rows[1]
+    assert TransactionImport.objects.filter(pk=original.pk).exists() is (not replace)

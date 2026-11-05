@@ -1,0 +1,9 @@
+services:
+  db:
+    image: alphago1v-postgres:frozen-20261105
+    platform: linux/amd64
+    pull_policy: never
+  app:
+    image: alphago1v:frozen-20261105
+    platform: linux/amd64
+    pull_policy: never

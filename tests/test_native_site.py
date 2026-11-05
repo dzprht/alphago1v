@@ -43,9 +43,9 @@ def test_all_features_with_real_models_and_csrf(settings):
     assert post("/accounts/register/", {"username": "native_owner", "password1": password,
                                        "password2": password}).status_code == 302
     assert post("/accounts/login/", {"username": "native_owner", "password": password}).status_code == 302
-    for kind, extension, field in (("audio", "wav", "audio"), ("screenshot", "png", "image")):
+    for kind, extension, field in (("qr", "png", "image"), ("screenshot", "png", "image")):
         for name, warning in (("warning", True), ("ordinary", False)):
-            with (settings.BASE_DIR / "examples/demo" / (name + "." + extension)).open("rb") as stream:
+            with (settings.BASE_DIR / "examples/demo" / (("qr-" if kind == "qr" else "") + name + "." + extension)).open("rb") as stream:
                 response = post("/checks/new/" + kind + "/", {field: stream})
             assert response.status_code == 302
             detail = client.get(response.url)
@@ -57,7 +57,7 @@ def test_all_features_with_real_models_and_csrf(settings):
     with (settings.BASE_DIR / "examples/transactions.csv").open("rb") as stream:
         assert post("/transactions/", {"file": stream}).status_code == 302
     assert len(get_user_transactions(User.objects.get(username="native_owner"))) == 3
-    manual = {"action": "manual", "rows-TOTAL_FORMS": "20", "rows-INITIAL_FORMS": "0"}
+    manual = {"action": "manual", "manual-replace": "on", "rows-TOTAL_FORMS": "20", "rows-INITIAL_FORMS": "0"}
     for index in range(20):
         manual.update({f"rows-{index}-occurred_at": "2026-10-20T14:30",
                        f"rows-{index}-amount": str(100 + index * 10),

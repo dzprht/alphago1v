@@ -1,0 +1,53 @@
+name: alphago1v-prod
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    restart: unless-stopped
+    stop_grace_period: 620s
+    env_file: ${APP_ENV_FILE:-.env}
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      DJANGO_TRUSTED_PROXY_IPS: 172.29.71.1,127.0.0.1
+      FORWARDED_ALLOW_IPS: 172.29.71.1,127.0.0.1
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./var/ml:/app/var/ml:ro
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "deploy/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.71.0/24
+          gateway: 172.29.71.1

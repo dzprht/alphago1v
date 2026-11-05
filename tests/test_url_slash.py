@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 
-def test_url_model_removes_path_slash_and_preserves_query():
-    # убирает последний слеш пути и сохраняет остальные части адреса
+def test_url_model_uses_full_hostname_and_port():
+    # оставляет для сети схему полный hostname и порт
     torch = pytest.importorskip("torch")
     pytest.importorskip("transformers")
     from analysis.selected import CNNModel
@@ -19,11 +19,15 @@ def test_url_model_removes_path_slash_and_preserves_query():
     model.batch_size = 32
     model.model = capture
     urls = ["https://sberbank.ru/", "https://sberbank.ru/ru/person/",
-            "https://sberbank.ru/ru/person", "https://sberbank.ru/?next=/path/#section/"]
+            "https://sberbank.ru/ru/person", "https://sberbank.ru/?next=/path/#section/",
+            "https://sberbank.ru.evil.example/ru/person", "https://sberbank.ru@evil.example/verify",
+            "https://bank.example:8443/path", "https://[::1]/path"]
     model.scores(urls)
     decoded = ["".join(chr(value - 1) for value in row if value) for row in batches]
-    assert decoded == ["https://sberbank.ru", "https://sberbank.ru/ru/person",
-                       "https://sberbank.ru/ru/person", "https://sberbank.ru?next=/path/#section/"]
+    assert decoded == ["https://sberbank.ru"] * 4 + [
+        "https://sberbank.ru.evil.example", "https://evil.example",
+        "https://bank.example:8443", "https://[::1]",
+    ]
 
 
 def test_url_result_keeps_original_address():

@@ -86,19 +86,22 @@ class CNNModel(URLModel):
         self.model.load_state_dict(state["state_dict"], strict=True)
         self.model.eval().requires_grad_(False)
         catalogue = json.dumps(self.catalogue, sort_keys=True, ensure_ascii=False).encode("utf-8")
-        self.analyzer_version = analyzer_version + "-trim-path-slash-v1-" + hashlib.sha256(catalogue).hexdigest()[:12]
+        self.analyzer_version = analyzer_version + "-host-only-v1-" + hashlib.sha256(catalogue).hexdigest()[:12]
 
     @torch.inference_mode()
     def scores(self, urls):
-        # кодирует исходные адреса и возвращает оценки фишинга
+        # получает оценки по схеме полному hostname и порту
         if isinstance(urls, str):
             raise ValueError("Нужен список URL")
         encoded = np.zeros((len(urls), 256), dtype=np.int64)
         for index, url in enumerate(urls):
-            value = url.strip()
-            parsed = urlsplit(value)
-            if parsed.path.endswith("/"):
-                value = parsed._replace(path=parsed.path.removesuffix("/")).geturl()
+            parsed = urlsplit(url.strip())
+            host = parsed.hostname
+            if ":" in host:
+                host = "[" + host + "]"
+            if parsed.port is not None:
+                host += ":" + str(parsed.port)
+            value = parsed.scheme + "://" + host
             values = [ord(char) + 1 if ord(char) < 128 else 129 for char in value[:256]]
             encoded[index, :len(values)] = values
         if not len(encoded):

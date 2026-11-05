@@ -7,16 +7,16 @@ from transactions.csv_import import read_transactions_csv
 from transactions.models import Transaction, TransactionImport
 
 
-def import_transactions(user, file):
-    # заменяет историю пользователя после проверки всего файла
+def import_transactions(user, file, *, replace=False):
+    # сохраняет операции пользователя после проверки всего файла
     if not user.is_authenticated:
         raise PermissionDenied
     rows, checksum = read_transactions_csv(file)
-    return replace_transactions(user, rows, checksum)
+    return save_transactions(user, rows, checksum, replace=replace)
 
 
-def replace_transactions(user, rows, checksum=""):
-    # сохраняет проверенные операции вместо прежней истории
+def save_transactions(user, rows, checksum="", *, replace=False):
+    # добавляет операции или заменяет историю по галочке
     if not user.is_authenticated:
         raise PermissionDenied
     if not rows:
@@ -25,14 +25,18 @@ def replace_transactions(user, rows, checksum=""):
 
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=user.pk)
-        TransactionImport.objects.filter(user=user).delete()
-        history = TransactionImport.objects.create(
-            user=user,
-            row_count=len(rows),
-            period_start=min(dates),
-            period_end=max(dates),
-            file_sha256=checksum,
-        )
+        if replace:
+            TransactionImport.objects.filter(user=user).delete()
+        history, created = TransactionImport.objects.get_or_create(user=user, defaults={
+            "row_count": 0, "period_start": min(dates), "period_end": max(dates),
+            "file_sha256": checksum,
+        })
+        history.row_count += len(rows)
+        history.period_start = min(history.period_start, min(dates))
+        history.period_end = max(history.period_end, max(dates))
+        if not created:
+            history.file_sha256 = ""
+        history.save(update_fields=["row_count", "period_start", "period_end", "file_sha256"])
         Transaction.objects.bulk_create(
             [Transaction(history=history, **row) for row in rows], batch_size=1000
         )
