@@ -120,8 +120,8 @@ def run_check(user, kind, input_data, analyzer, *, upload=None, media_model=None
     try:
         options = {"extraction": extract_upload(kind, upload, media_model)} if upload is not None else {}
         result, snapshot = analyzer.analyze(kind, input_data, history, checked_at=check.created_at, **options)
-    except Exception:
-        logger.exception("Не удалось выполнить проверку %s", check.pk)
+    except Exception as error:
+        logger.error("Не удалось выполнить проверку %s %s", check.pk, type(error).__name__)
         return finish_check(check, error_message="Не удалось выполнить анализ. Попробуйте позже.")
     if result["status"] == "error":
         return finish_check(check, error_message="Не удалось распознать материал. Попробуйте другой файл.",

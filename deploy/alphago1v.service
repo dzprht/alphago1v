@@ -1,0 +1,17 @@
+[Unit]
+Description=Alpha Protection
+After=network.target postgresql.service
+
+[Service]
+User=alphago1v
+Group=alphago1v
+WorkingDirectory=/opt/alphago1v
+EnvironmentFile=/etc/alphago1v.env
+ExecStart=/opt/alphago1v/.venv/bin/gunicorn --bind 127.0.0.1:8000 --workers 1 --timeout 180 --graceful-timeout 180 config.wsgi:application
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=200
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

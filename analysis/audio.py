@@ -8,6 +8,8 @@ from pathlib import Path
 import numpy as np
 
 from analysis.features import Turn
+from analysis.diarization import load_diarization
+from analysis.whisper import load_whisper
 
 
 SAMPLE_RATE = 16000
@@ -69,33 +71,30 @@ def words_to_turns(words, max_gap):
 
 class AudioRecognizer:
     def __init__(self, transcriber, diarizer, *, quality, model_versions):
-        # сохраняет готовые модели и выбранные на проверке пороги
+        # сохраняет готовые модели и настройки распознавания
         self.transcriber, self.diarizer = transcriber, diarizer
         self.quality = dict(quality)
         if not 0 <= quality["min_word_probability"] <= 1 or not 0 <= quality["max_no_speech_probability"] <= 1:
             raise ValueError("Пороги вероятностей должны быть от нуля до единицы")
         if quality["max_seconds"] <= 0 or quality["max_turn_gap"] < 0:
             raise ValueError("Нужны положительная длительность и неотрицательный интервал")
-        identity = json.dumps({"models": model_versions, "quality": quality, "policy": "audio-v1",
+        identity = json.dumps({"models": model_versions, "quality": quality, "policy": "audio-v2",
+                               "diarization_enabled": diarizer is not None,
                                "format": "wav-pcm16-16khz"}, sort_keys=True, allow_nan=False)
         self.analyzer_version = "audio-" + hashlib.sha256(identity.encode()).hexdigest()[:16]
 
     @classmethod
-    def from_local(cls, whisper_dir, diarization_dir, *, quality, model_versions):
+    def from_local(cls, whisper_dir, diarization_dir=None, *, quality, model_versions):
         # загружает только заранее сохраненные модели без телеметрии
-        whisper_dir, diarization_dir = Path(whisper_dir), Path(diarization_dir)
-        if not all((whisper_dir / name).is_file() for name in ("model.bin", "config.json", "tokenizer.json")) or not (diarization_dir / "config.yaml").is_file():
-            raise ValueError("Нужны локальные каталоги Whisper и pyannote")
+        if diarization_dir is not None and not (Path(diarization_dir) / "config.yaml").is_file():
+            raise ValueError("Нужен локальный каталог pyannote")
         os.environ["HF_HUB_OFFLINE"] = "1"
         os.environ["PYANNOTE_METRICS_ENABLED"] = "0"
         from huggingface_hub import constants
 
         constants.HF_HUB_OFFLINE = True
-        from faster_whisper import WhisperModel
-        from pyannote.audio import Pipeline
-
-        transcriber = WhisperModel(str(whisper_dir), device="cpu", compute_type="int8", local_files_only=True)
-        diarizer = Pipeline.from_pretrained(str(diarization_dir))
+        transcriber = load_whisper(whisper_dir)
+        diarizer = load_diarization(diarization_dir) if diarization_dir is not None else None
         return cls(transcriber, diarizer, quality=quality, model_versions=model_versions)
 
     def _intervals(self, waveform):
@@ -104,7 +103,7 @@ class AudioRecognizer:
 
         output = self.diarizer({"waveform": torch.from_numpy(waveform).unsqueeze(0), "sample_rate": SAMPLE_RATE})
         intervals = [(float(segment.start), float(segment.end), speaker)
-                     for segment, speaker in output.speaker_diarization]
+                     for segment, _, speaker in output.speaker_diarization.itertracks(yield_label=True)]
         intervals.sort(key=lambda item: item[0])
         labels = {speaker: chr(65 + index) for index, speaker in enumerate(dict.fromkeys(item[2] for item in intervals))}
         return [(left, right, labels[speaker]) for left, right, speaker in intervals]
@@ -166,8 +165,12 @@ class AudioRecognizer:
                     limitations.extend(notes)
             else:
                 waveform = samples.mean(axis=1)
-                intervals = self._intervals(waveform)
+                intervals = self._intervals(waveform) if self.diarizer is not None else []
                 words, partial, limitations = self._words(waveform, intervals, None, None)
+                if any(not any(word["start"] < right and word["end"] > left for word in words)
+                       for left, right, speaker in intervals):
+                    partial = True
+                    limitations.append("Часть обнаруженной речи не попала в расшифровку")
             turns = words_to_turns(words, self.quality["max_turn_gap"])
         except Exception:
             return {"status": "error", "turns": [], "order_known": False,
@@ -178,7 +181,11 @@ class AudioRecognizer:
         if turns and not order_known:
             partial = True
             limitations.append("Одновременные реплики не имеют однозначного общего порядка")
-        if any(turn.speaker is None for turn in turns):
+        if turns and not isolated_channels and self.diarizer is None:
+            partial = True
+            limitations.append("Разделение голосов не подключено участники записи неизвестны")
+        elif any(turn.speaker is None for turn in turns):
+            partial = True
             limitations.append("Для части речи не удалось определить участника")
         if turns:
             limitations.append("Метки голосов не устанавливают владельца записи")

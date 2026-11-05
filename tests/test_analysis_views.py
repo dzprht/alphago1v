@@ -74,7 +74,7 @@ def test_authenticated_analysis_redirects_to_saved_result(client, configured_ana
 
 
 @pytest.mark.parametrize("failure", [False, True])
-def test_guest_failure_and_unknown_risk_are_not_shown_as_safe(client, configured_analyzer, failure):
+def test_guest_failure_and_unknown_risk_are_not_shown_as_safe(client, configured_analyzer, failure, caplog):
     # различает ошибку модели и недостаточность для общего вывода
     analyzer, _ = configured_analyzer
     if failure:
@@ -87,10 +87,12 @@ def test_guest_failure_and_unknown_risk_are_not_shown_as_safe(client, configured
     message = "Не удалось выполнить анализ" if failure else "Общий риск не определен"
     assert message in response.content.decode()
     assert "internal details" not in response.content.decode()
+    assert "internal details" not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records if record.name == "checks.services")
     assert Check.objects.count() == Session.objects.count() == 0
 
 
-def test_loader_failure_does_not_create_check(client, configured_analyzer):
+def test_loader_failure_does_not_create_check(client, configured_analyzer, caplog):
     # отклоняет недоступные модели до создания проверки
     analyzer, loader = configured_analyzer
     loader.side_effect = OSError("private artifact path")
@@ -98,6 +100,9 @@ def test_loader_failure_does_not_create_check(client, configured_analyzer):
     assert response.status_code == 503
     assert "Анализ пока не подключен" in response.content.decode()
     assert "private artifact path" not in response.content.decode()
+    assert "private artifact path" not in caplog.text
+    assert "OSError" in caplog.text
+    assert all(record.exc_info is None for record in caplog.records if record.name == "checks.views")
     analyzer.analyze.assert_not_called()
     assert Check.objects.count() == Session.objects.count() == 0
 

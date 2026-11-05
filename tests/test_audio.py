@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from analysis.audio import AudioRecognizer, read_wav, speaker_for_word, words_to_turns
+from analysis.diarization import DIARIZATION_FILES
 
 
 QUALITY = {"min_word_probability": 0.7, "min_avg_logprob": -1,
@@ -110,20 +111,102 @@ def test_local_loader_disables_downloads_and_telemetry(tmp_path, monkeypatch):
     whisper, pyannote = tmp_path / "whisper", tmp_path / "pyannote"
     whisper.mkdir()
     pyannote.mkdir()
-    for name in ("model.bin", "config.json", "tokenizer.json"):
+    for name in ("model.bin", "config.json", "tokenizer.json", "vocabulary.txt"):
         (whisper / name).write_bytes(b"test")
-    (pyannote / "config.yaml").write_text("test")
+    for name in DIARIZATION_FILES:
+        path = pyannote / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"test")
     whisper_class, pipeline_class = Mock(), Mock()
     hub_constants = SimpleNamespace(HF_HUB_OFFLINE=False)
     monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(constants=hub_constants))
     monkeypatch.setitem(sys.modules, "faster_whisper", SimpleNamespace(WhisperModel=whisper_class))
     monkeypatch.setitem(sys.modules, "pyannote.audio", SimpleNamespace(Pipeline=pipeline_class))
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(device=Mock(return_value="cpu")))
     monkeypatch.setenv("HF_HUB_OFFLINE", "0")
     monkeypatch.setenv("PYANNOTE_METRICS_ENABLED", "1")
     model = AudioRecognizer.from_local(whisper, pyannote, quality=QUALITY, model_versions=VERSIONS)
     whisper_class.assert_called_once_with(str(whisper), device="cpu", compute_type="int8", local_files_only=True)
     pipeline_class.from_pretrained.assert_called_once_with(str(pyannote))
+    pipeline_class.from_pretrained.return_value.to.assert_called_once_with("cpu")
     assert sys.modules["faster_whisper"].WhisperModel.return_value is model.transcriber
     import os
     assert os.environ["HF_HUB_OFFLINE"] == "1" and os.environ["PYANNOTE_METRICS_ENABLED"] == "0"
     assert hub_constants.HF_HUB_OFFLINE is True
+
+
+def test_whisper_only_loader_does_not_import_pyannote(tmp_path, monkeypatch):
+    # загружает только локальный распознаватель без разделения голосов
+    for name in ("model.bin", "config.json", "tokenizer.json", "vocabulary.txt"):
+        (tmp_path / name).write_bytes(b"test")
+    whisper_class = Mock()
+    monkeypatch.setitem(sys.modules, "faster_whisper", SimpleNamespace(WhisperModel=whisper_class))
+    monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(constants=SimpleNamespace(HF_HUB_OFFLINE=False)))
+    monkeypatch.setitem(sys.modules, "pyannote.audio", None)
+    monkeypatch.setenv("HF_HUB_OFFLINE", "0")
+    monkeypatch.setenv("PYANNOTE_METRICS_ENABLED", "1")
+    model = AudioRecognizer.from_local(tmp_path, quality=QUALITY, model_versions={"whisper": "test-asr"})
+    whisper_class.assert_called_once_with(str(tmp_path), device="cpu", compute_type="int8", local_files_only=True)
+    assert model.transcriber is whisper_class.return_value and model.diarizer is None
+    (tmp_path / "tokenizer.json").unlink()
+    with pytest.raises(ValueError):
+        AudioRecognizer.from_local(tmp_path, quality=QUALITY, model_versions={"whisper": "test-asr"})
+
+
+def test_whisper_without_diarization_keeps_unknown_speakers_and_silence(tmp_path):
+    # сохраняет слова и время но не выдумывает участников
+    backend = Mock()
+    backend.transcribe.return_value = ([segment([(0.1, 0.4, "Пришли", 0.9), (0.4, 0.8, " код", 0.9)])], None)
+    recognizer = AudioRecognizer(backend, None, quality=QUALITY, model_versions={"whisper": "test-asr"})
+    path = write_wav(tmp_path / "voice.wav")
+    result = recognizer.recognize(path)
+    assert result["status"] == "partial" and result["extracted_text"] == "Пришли код"
+    assert result["order_known"] is True
+    assert all(turn.speaker is None and turn.owner == "unknown" for turn in result["turns"])
+    assert result["turns"][0].source_span["start"] == 0.1
+    assert result["turns"][0].source_span["end"] == 0.8
+    assert any("Разделение голосов не подключено" in note for note in result["limitations"])
+    with_diarization = AudioRecognizer(backend, Mock(), quality=QUALITY, model_versions={"whisper": "test-asr"})
+    assert with_diarization.analyzer_version != recognizer.analyzer_version
+    backend.transcribe.return_value = ([], None)
+    empty = recognizer.recognize(path)
+    assert empty["status"] == "empty" and empty["turns"] == []
+
+
+def test_diarization_intervals_preserve_overlap_and_normalize_labels(monkeypatch):
+    # сохраняет обычные интервалы голосов вместе с наложениями
+    native = [(SimpleNamespace(start=3, end=4), "track", "voice-2"),
+              (SimpleNamespace(start=0, end=2), "track", "voice-1"),
+              (SimpleNamespace(start=1, end=1.5), "other", "voice-2")]
+    annotation = SimpleNamespace(itertracks=Mock(return_value=native))
+    pipeline = Mock(return_value=SimpleNamespace(speaker_diarization=annotation))
+    tensor = Mock()
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(from_numpy=Mock(return_value=tensor)))
+    recognizer = AudioRecognizer(Mock(), pipeline, quality=QUALITY, model_versions=VERSIONS)
+    assert recognizer._intervals(np.zeros(16000, dtype=np.float32)) == [
+        (0.0, 2.0, "A"), (1.0, 1.5, "B"), (3.0, 4.0, "B"),
+    ]
+    annotation.itertracks.assert_called_once_with(yield_label=True)
+    pipeline.assert_called_once_with({"waveform": tensor.unsqueeze.return_value, "sample_rate": 16000})
+
+
+def test_uncovered_word_makes_diarization_partial(tmp_path, monkeypatch):
+    # отмечает частичный ответ если голос не покрывает слово целиком
+    backend = Mock()
+    backend.transcribe.return_value = ([segment([(0, 0.5, "Привет", 0.9)])], None)
+    recognizer = AudioRecognizer(backend, Mock(), quality=QUALITY, model_versions=VERSIONS)
+    monkeypatch.setattr(recognizer, "_intervals", Mock(return_value=[(0.1, 0.5, "A")]))
+    result = recognizer.recognize(write_wav(tmp_path / "gap.wav"))
+    assert result["status"] == "partial" and result["turns"][0].speaker is None
+    assert any("не удалось определить участника" in note for note in result["limitations"])
+
+
+def test_missing_transcript_for_voice_interval_is_reported(tmp_path, monkeypatch):
+    # сообщает если обнаруженный голос совсем не попал в текст
+    backend = Mock()
+    backend.transcribe.return_value = ([segment([(0.1, 0.5, "Привет", 0.9)])], None)
+    recognizer = AudioRecognizer(backend, Mock(), quality=QUALITY, model_versions=VERSIONS)
+    monkeypatch.setattr(recognizer, "_intervals", Mock(return_value=[(0, 0.7, "A"), (1, 1.8, "B")]))
+    result = recognizer.recognize(write_wav(tmp_path / "missing.wav"))
+    assert result["status"] == "partial" and result["turns"][0].speaker == "A"
+    assert any("не попала в расшифровку" in note for note in result["limitations"])

@@ -33,7 +33,8 @@ def test_missing_media_configuration_does_not_import_recognizers(tmp_path, monke
     assert load_media_model("audio", tmp_path) is None
 
 
-def test_media_loads_relative_weights_with_server_limits_and_caches_each_kind(tmp_path, monkeypatch):
+@pytest.mark.parametrize("with_diarization", [False, True])
+def test_media_loads_relative_weights_with_server_limits_and_caches_each_kind(tmp_path, monkeypatch, with_diarization):
     # передает локальные пути и сохраняет отдельные модели двух видов
     from analysis.audio import AudioRecognizer
     from analysis.screenshot import ScreenshotModel
@@ -42,7 +43,7 @@ def test_media_loads_relative_weights_with_server_limits_and_caches_each_kind(tm
                "min_avg_logprob": -1.0, "max_turn_gap": 0.8, "max_seconds": 999}
     versions = {"whisper": "small-fixed", "diarization": "fixed"}
     (tmp_path / "media.json").write_text(json.dumps({
-        "audio": {"whisper_dir": "whisper", "diarization_dir": "voices",
+        "audio": {"whisper_dir": "whisper", **({"diarization_dir": "voices"} if with_diarization else {}),
                   "quality": quality, "model_versions": versions},
         "screenshot": {"directory": "ocr", "min_confidence": 0.6, "max_pixels": 999999999},
     }))
@@ -54,7 +55,7 @@ def test_media_loads_relative_weights_with_server_limits_and_caches_each_kind(tm
     assert load_media_model("screenshot", tmp_path) is sentinel.screenshot
     assert load_media_model("audio", tmp_path) is sentinel.audio
     assert load_media_model("screenshot", tmp_path) is sentinel.screenshot
-    audio.assert_called_once_with(tmp_path / "whisper", tmp_path / "voices",
+    audio.assert_called_once_with(tmp_path / "whisper", tmp_path / "voices" if with_diarization else None,
                                   quality={**quality, "max_seconds": MAX_AUDIO_SECONDS}, model_versions=versions)
     screenshot.assert_called_once_with(tmp_path / "ocr", min_confidence=0.6, max_pixels=MAX_IMAGE_PIXELS)
 

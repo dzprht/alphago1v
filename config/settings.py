@@ -12,6 +12,7 @@ DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
 SECURE_SSL_REDIRECT = os.getenv("DJANGO_HTTPS", "0") == "1"
 SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+TRUSTED_PROXY_IPS = {ip.strip() for ip in os.getenv("DJANGO_TRUSTED_PROXY_IPS", "").split(",") if ip.strip()}
 ANALYZER_DIR = os.getenv("ANALYZER_DIR", "")
 if ANALYZER_DIR:
     ANALYZER_DIR = BASE_DIR / ANALYZER_DIR
@@ -29,6 +30,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "config.middleware.TrustedProxyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

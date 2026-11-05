@@ -1,8 +1,9 @@
 import json
 from functools import lru_cache
-from hashlib import file_digest, sha256
+from hashlib import sha256
 from pathlib import Path
 
+from analysis.artifacts import artifact_files
 from analysis.pipeline import Analyzer
 from analysis.text import E5Encoder, TEXT_LABELS, TextModel
 from analysis.url import URLModel
@@ -31,15 +32,8 @@ def load_analyzer(directory):
         manifest = json.loads((directory / "MANIFEST.json").read_text(encoding="utf-8"))
         if manifest["format"] != "selected-models-v1":
             raise ValueError("Неизвестный формат выбранных моделей")
-        checksums = {}
-        for name in SELECTED_FILES:
-            path = directory / name
-            expected = manifest["files"][name]
-            with path.open("rb") as stream:
-                checksum = file_digest(stream, "sha256").hexdigest()
-            if path.stat().st_size != expected["bytes"] or checksum != expected["sha256"]:
-                raise ValueError("Поврежден файл модели " + name)
-            checksums[name] = checksum
+        files = artifact_files(directory, SELECTED_FILES, manifest["files"])
+        checksums = {name: meta["sha256"] for name, meta in files.items()}
         calibration = {"thresholds": json.loads((directory / "thresholds.json").read_text(encoding="utf-8"))}
     else:
         calibration = json.loads((directory / "calibration.json").read_text(encoding="utf-8"))
@@ -83,8 +77,9 @@ def load_media_model(kind, directory):
     if kind == "audio":
         from analysis.audio import AudioRecognizer
 
+        diarization_dir = config.get("diarization_dir")
         return AudioRecognizer.from_local(
-            directory / config["whisper_dir"], directory / config["diarization_dir"],
+            directory / config["whisper_dir"], directory / diarization_dir if diarization_dir else None,
             quality={**config["quality"], "max_seconds": MAX_AUDIO_SECONDS},
             model_versions=config["model_versions"],
         )

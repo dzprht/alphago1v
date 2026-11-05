@@ -88,6 +88,7 @@ def test_empty_oversized_and_failed_ocr_have_no_fabricated_turns():
 def test_local_loader_uses_pinned_networks_without_downloads(tmp_path, monkeypatch):
     # проверяет локальные веса и запрет сетевой загрузки
     (tmp_path / "craft_mlt_25k.pth").write_bytes(b"test")
+    (tmp_path / "cyrillic_g2.pth").write_bytes(b"test")
     reader = Mock()
     factory = Mock(return_value=reader)
     monkeypatch.setitem(sys.modules, "easyocr", SimpleNamespace(Reader=factory))
@@ -97,5 +98,5 @@ def test_local_loader_uses_pinned_networks_without_downloads(tmp_path, monkeypat
     factory.assert_called_once_with(["ru", "en"], gpu=False, model_storage_directory=str(tmp_path),
                                     download_enabled=False, detect_network="craft", recog_network="cyrillic_g2", verbose=False)
     missing = tmp_path / "missing"
-    with pytest.raises(ValueError, match="локальные веса"):
+    with pytest.raises(ValueError, match="локальн"):
         ScreenshotModel.from_local(missing, min_confidence=0.7, max_pixels=100000)

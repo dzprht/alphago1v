@@ -58,8 +58,8 @@ def input_view(request, kind):
                 analyzer = load_analyzer(settings.ANALYZER_DIR)
                 if analyzer is not None and form.is_multipart():
                     media_model = load_media_model(kind, settings.ANALYZER_DIR)
-            except Exception:
-                logger.exception("Не удалось загрузить анализатор")
+            except Exception as error:
+                logger.error("Не удалось загрузить анализатор %s", type(error).__name__)
                 analyzer = None
             if analyzer is not None and (not form.is_multipart() or media_model is not None):
                 field = "audio" if kind == Check.Kind.AUDIO else "image"

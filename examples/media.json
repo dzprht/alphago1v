@@ -3,8 +3,8 @@
     "whisper_dir": "../media/whisper-small",
     "diarization_dir": "../media/pyannote",
     "model_versions": {
-      "whisper": "replace-with-local-revision",
-      "diarization": "replace-with-local-revision"
+      "whisper": "Systran/faster-whisper-small@536b0662742c02347bc0e980a01041f333bce120",
+      "diarization": "pyannote/speaker-diarization-community-1@3533c8cf8e369892e6b79ff1bf80f7b0286a54ee"
     },
     "quality": {
       "min_word_probability": 0.7,

@@ -121,6 +121,9 @@ ml = [
     { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
     { name = "transformers" },
 ]
+whisper = [
+    { name = "faster-whisper" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -159,6 +162,7 @@ ml = [
     { name = "torch", marker = "sys_platform == 'linux'", specifier = "==2.11.0", index = "https://download.pytorch.org/whl/cpu" },
     { name = "transformers", specifier = "==5.16.1" },
 ]
+whisper = [{ name = "faster-whisper", specifier = "==1.2.1" }]
 
 [[package]]
 name = "annotated-doc"

@@ -7,10 +7,21 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageOps
 
+from analysis.artifacts import artifact_files
 from analysis.features import Turn
 
 
 LAYOUT_VERSION = "bubble-layout-v1"
+OCR_MODELS = {
+    "craft_mlt_25k.pth": {
+        "url": "https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip",
+        "md5": "2f8227d2def4037cdb3b34389dcf9ec1",
+    },
+    "cyrillic_g2.pth": {
+        "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.6.1/cyrillic_g2.zip",
+        "md5": "19f85f43d9128a89ac21b8d6a06973fe",
+    },
+}
 
 
 def box_rect(box):
@@ -113,9 +124,12 @@ class ScreenshotModel:
     def from_local(cls, directory, *, min_confidence, max_pixels):
         # загружает только подготовленные локальные веса OCR
         directory = Path(directory)
-        weights = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(directory.glob("*.pth"))}
-        if not weights:
-            raise ValueError("Нужны локальные веса OCR")
+        manifest_path = directory / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else None
+        if manifest is not None and (manifest["format"] != "easyocr-v1" or manifest["easyocr"] != "1.7.2"):
+            raise ValueError("Несовместимая версия OCR")
+        files = artifact_files(directory, OCR_MODELS, manifest["files"] if manifest is not None else None)
+        weights = {name: meta["sha256"] for name, meta in files.items()}
         import easyocr
 
         reader = easyocr.Reader(["ru", "en"], gpu=False, model_storage_directory=str(directory),
