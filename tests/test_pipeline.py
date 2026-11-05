@@ -115,7 +115,7 @@ def test_transfer_uses_original_request_and_one_time_without_full_csv_snapshot(a
 
 
 def test_unknown_order_invalid_links_and_prepared_media_remain_limited(analyzer):
-    # проверяет неизвестный порядок и честный отказ медиа
+    # проверяет неполное распознавание и неверные ссылки
     turns = [Turn("a", "https://safe.example.com", "A"),
              Turn("b", "https://bad.example.com https://broken.com:99999", "A")]
     result, _ = analyzer.analyze("audio", {}, turns=turns, order_known=False,

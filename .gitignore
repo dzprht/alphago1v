@@ -1,4 +1,5 @@
 *.docx
+!/IT_Харченко.docx
 idea.md
 .env
 .env.*

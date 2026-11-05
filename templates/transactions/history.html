@@ -9,7 +9,7 @@
     <h2>Загрузка CSV</h2>
     <p><a href="{% url 'transactions:template' %}">Скачать шаблон с вымышленными операциями</a></p>
     <p class="muted">Замените примеры своими операциями. Поддерживается CSV в UTF-8 с разделителем ; до 2 МиБ и 10 000 операций.</p>
-    <p class="muted">Без галочки новые строки добавятся к истории, включая повторы. При ошибке старые данные сохранятся.</p>
+    <p class="muted">Без галочки новые строки добавятся к истории, включая повторы.</p>
     <form method="post" action="{% url 'transactions:history' %}" enctype="multipart/form-data">
         {% csrf_token %}
         <input type="hidden" name="action" value="csv">

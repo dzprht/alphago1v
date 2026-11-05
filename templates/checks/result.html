@@ -39,7 +39,6 @@
 {% endif %}
 {% endif %}
 {% if check.extracted_text %}<section class="panel"><h2>{% if check.kind == 'qr' %}Извлеченная ссылка{% else %}Распознанный текст{% endif %}</h2><pre>{{ check.extracted_text }}</pre></section>{% endif %}
-<p class="meta">Версия анализатора: {{ check.analyzer_version }}</p>
 {% elif check.status == 'failed' %}
 <div class="notice notice--error" role="alert"><strong>Проверка не завершена</strong><p>{{ check.error_message }}</p></div>
 {% else %}

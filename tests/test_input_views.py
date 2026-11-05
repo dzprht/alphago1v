@@ -46,7 +46,7 @@ def test_home_and_five_forms_are_public(client, authenticated):
     ],
 )
 def test_input_errors_and_missing_analyzer_do_not_save_data(client, kind, data):
-    # проверяет ввод и честный отказ без сохранения проверки
+    # проверяет ошибки ввода и отсутствие модели
     url = reverse("checks:new", args=[kind])
     assert client.post(url, {}).status_code == 400
     response = client.post(url, data)
