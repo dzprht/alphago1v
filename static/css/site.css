@@ -135,6 +135,9 @@ th, td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: to
 th { background: var(--soft); font-weight: 650; }
 td { overflow-wrap: anywhere; min-width: 130px; }
 .empty-state { padding-block: 12px; }
+.manual-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+.manual-row legend { font-weight: 650; padding: 0 6px; }
+.manual-row .field:last-child { grid-column: 1 / -1; }
 
 @media (max-width: 760px) {
     .header-row { align-items: flex-start; flex-direction: column; gap: 12px; }
@@ -143,6 +146,7 @@ td { overflow-wrap: anywhere; min-width: 130px; }
     .panel { padding: 20px; }
 }
 @media (max-width: 480px) {
+    .manual-row { grid-template-columns: minmax(0, 1fr); }
     .shell { padding-inline: 16px; }
     .nav { gap: 2px; }
     .nav a { padding-inline: 8px; }

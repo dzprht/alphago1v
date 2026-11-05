@@ -73,7 +73,9 @@ def risk_features(mode, *, text=None, url=None, transfer=None, fields=None,
         int(text is not None and text["speaker"] is not None),
         int(text is not None and text["owner"] in ("user", "other")),
     ]
-    return {"schema_version": RISK_SCHEMA_VERSION, "vector": vector, "source_refs": refs}
+    return {"schema_version": RISK_SCHEMA_VERSION, "vector": vector, "source_refs": refs,
+            "transfer": transfer if mode == "transfer" else None, "url": url,
+            "speaker": text["speaker"] if text is not None else None}
 
 
 def risk_matrix(rows):

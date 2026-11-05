@@ -25,6 +25,7 @@ def test_scores_keep_unknown_and_skip_other_splits_without_tree_prediction():
     assert result[0]["scores"]["url_score"] == 0
     assert result[0]["scores"]["text_urgency"] is None
     assert result[0]["labels"] == labels and result[0]["model_versions"] == versions
+    assert result[0]["domains"] == ["example.com"]
     analyzer.prepare.assert_called_once()
     analyzer.analyze.assert_not_called()
     analyzer.prepare.return_value = {"target_turn_ids": [None], "rows": [risk_features("text", text={

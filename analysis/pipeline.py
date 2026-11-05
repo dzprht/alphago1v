@@ -7,7 +7,7 @@ from analysis.transfer import transfer_features
 from analysis.url import extract_url
 
 
-PIPELINE_VERSION = "pipeline-v2"
+PIPELINE_VERSION = "pipeline-v3"
 
 
 def find_urls(text):
@@ -25,11 +25,10 @@ def find_urls(text):
 
 
 class Analyzer:
-    def __init__(self, text_model, url_model, risk_model, thresholds):
-        # сохраняет готовые модели и пороги показа признаков
+    def __init__(self, text_model, url_model, thresholds):
+        # сохраняет готовые модели и пороги признаков
         self.text_model = text_model
         self.url_model = url_model
-        self.risk_model = risk_model
         self.thresholds = dict(thresholds)
 
     def prepare(self, kind, data, history=None, *, checked_at, turns=None,
@@ -89,11 +88,10 @@ class Analyzer:
 
     def analyze(self, kind, data, history=None, *, checked_at, turns=None,
                 order_known=True, extraction_status="unknown", extraction=None):
-        # запускает итоговое дерево и собирает ответ из готовых признаков
+        # собирает предупреждения по готовым признакам и правилам
         prepared = self.prepare(kind, data, history, checked_at=checked_at, turns=turns,
                                 order_known=order_known, extraction_status=extraction_status, extraction=extraction)
-        decisions = [self.risk_model.predict(row) for row in prepared["rows"]]
-        result = assemble_result(prepared["rows"], decisions, thresholds=self.thresholds,
+        result = assemble_result(prepared["rows"], thresholds=self.thresholds,
                                  versions=prepared["versions"])
         result["limitations"] = list(dict.fromkeys(result["limitations"] + prepared["limitations"]))
         if prepared["extracted_text"]:
@@ -102,6 +100,4 @@ class Analyzer:
             result["limitations"].append("Часть ссылок в исходном тексте не удалось корректно разобрать")
             if result["sufficiency"] == "sufficient":
                 result["sufficiency"] = "limited"
-            if result["risk"] == 0:
-                result["risk"] = None
         return result, prepared["snapshot"]

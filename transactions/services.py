@@ -12,6 +12,15 @@ def import_transactions(user, file):
     if not user.is_authenticated:
         raise PermissionDenied
     rows, checksum = read_transactions_csv(file)
+    return replace_transactions(user, rows, checksum)
+
+
+def replace_transactions(user, rows, checksum=""):
+    # сохраняет проверенные операции вместо прежней истории
+    if not user.is_authenticated:
+        raise PermissionDenied
+    if not rows:
+        raise ValidationError("Добавьте хотя бы одну операцию")
     dates = [row["occurred_at"] for row in rows]
 
     with transaction.atomic():

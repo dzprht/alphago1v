@@ -57,14 +57,14 @@ def test_input_errors_and_missing_analyzer_do_not_save_data(client, kind, data):
     assert Check.objects.count() == User.objects.count() == Session.objects.count() == 0
 
 
-def test_media_uploads_are_disabled(client):
-    # проверяет что обработка файлов пока выключена
-    for kind in ["audio", "screenshot"]:
+def test_media_forms_accept_uploads_and_reject_invalid_files(client):
+    # показывает формы загрузки и проверяет файлы до вызова моделей
+    for kind, field in (("audio", "audio"), ("screenshot", "image")):
         url = reverse("checks:new", args=[kind])
-        assert "<fieldset disabled>" in client.get(url).content.decode()
-        response = client.post(url, {"audio": SimpleUploadedFile("sample.wav", b"test")})
-        assert response.status_code == 503
-        assert not response.context["form"].is_bound
+        html = client.get(url).content.decode()
+        assert 'enctype="multipart/form-data"' in html and "<fieldset disabled>" not in html
+        response = client.post(url, {field: SimpleUploadedFile("sample.bin", b"test")})
+        assert response.status_code == 400 and response.context["form"].is_bound
     assert Check.objects.count() == Session.objects.count() == 0
 
 

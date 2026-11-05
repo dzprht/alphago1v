@@ -60,12 +60,19 @@ def test_oof_plan_excludes_outer_and_fold_groups_cases_and_domains(corpus):
 def test_bad_targets_and_cross_split_domains_fail_before_model_loading(corpus):
     # проверяет ошибки разбиения до тяжелого запуска
     path, raw, texts, urls = corpus
-    for change in ("target", "domain", "missing_split"):
+    rows = deepcopy(raw)
+    rows[0].pop("risk")
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    parsed, _ = prepare_risk.read_scenarios(path)
+    assert parsed[0]["risk"] is None and parsed[1]["risk"] == raw[1]["risk"]
+    for change in ("target", "domain", "missing_split", "invalid_risk"):
         rows = deepcopy(raw)
         if change == "target":
             rows[0]["target_turn_id"] = "absent"
         elif change == "domain":
             rows[-1]["input_data"]["url"] = rows[0]["input_data"]["url"]
+        elif change == "invalid_risk":
+            rows[0]["risk"] = "2"
         else:
             rows = [row for row in rows if row["split"] != "test"]
         path.write_text("".join(json.dumps(row) + "\n" for row in rows))

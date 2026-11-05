@@ -31,6 +31,7 @@ def test_transfer_uses_outgoing_history_and_exact_recipient():
         "amount_median_log_ratio": 0, "recipient_coverage": 0.5,
         "recipient_count_log": log1p(3), "recipient_share": 0.3, "last_recipient_days": 1,
         "history_loaded": 1, "history_valid": 1, "recipient_provided": 1,
+        "amount_unusual": 0, "amount_modified_z": 0, "recipient_unseen": 0,
     })
     assert history == original
     unknown = transfer_features(1050, history=history, checked_at=NOW)["values"]
@@ -98,3 +99,40 @@ def test_any_future_row_disables_history_without_removing_rows():
     assert transfer_features(100, history=[operation(0)], checked_at=offset_time)["values"]["last_outgoing_days"] == 0
     with pytest.raises(ValueError, match="часовой пояс"):
         transfer_features(100, checked_at=NOW.replace(tzinfo=None))
+
+
+def test_modified_z_uses_strict_upper_boundary_and_ignores_incoming():
+    # проверяет границу суммы и неизменность исходной истории
+    history = [operation(i, 93255 if i < 10 else 106745) for i in range(20)]
+    history.append(operation(1, 999999999, direction="incoming"))
+    original = deepcopy(history)
+    for amount, flag, score in ((135000, 0, 3.5), (135001, 1, 3.5001), (65000, 0, -3.5)):
+        result = transfer_features(amount, "shop", history, checked_at=NOW)
+        values = result["values"]
+        assert values["amount_unusual"] == flag
+        assert values["amount_modified_z"] == pytest.approx(score)
+        assert result["source_refs"]["amount_unusual"] == {
+            "field": "amount", "statistic": "modified_z", "z": values["amount_modified_z"],
+        }
+    assert history == original
+
+
+def test_transfer_flags_keep_unknowns_and_distinguish_recipient_matches():
+    # различает нехватку истории нулевой разброс и отсутствие получателя
+    for history in (None, [], [operation(i, 100 + i) for i in range(19)],
+                    [operation(i, 100000) for i in range(20)],
+                    [operation(1), operation(-1, direction="incoming")]):
+        values = transfer_features(100001, "shop", history, checked_at=NOW)["values"]
+        assert values["amount_unusual"] is values["amount_modified_z"] is None
+    history = [operation(1, recipient="shop"), operation(2, recipient="")]
+    assert transfer_features(100, " shop ", history, checked_at=NOW)["values"]["recipient_unseen"] == 0
+    result = transfer_features(100, "Shop", history, checked_at=NOW)
+    assert result["values"]["recipient_unseen"] == 1
+    assert result["source_refs"]["recipient_unseen"] == {"field": "recipient", "statistic": "history_matches"}
+    for recipient, rows in (("", history), ("shop", None), ("shop", []),
+                            ("shop", [operation(1, recipient="")]),
+                            ("shop", [operation(1, direction="incoming")]),
+                            ("shop", [operation(-1)])):
+        result = transfer_features(100, recipient, rows, checked_at=NOW)
+        assert result["values"]["recipient_unseen"] is None
+        assert "recipient_unseen" not in result["source_refs"]

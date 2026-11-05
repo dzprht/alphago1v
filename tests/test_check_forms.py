@@ -1,5 +1,6 @@
 import json
 from io import BytesIO
+import wave
 
 import pytest
 from PIL import Image
@@ -33,7 +34,11 @@ def test_check_forms_prepare_valid_data(form_class, kind, data):
     # проверяет обязательные поля и подготовку данных
     files = {}
     if kind == Check.Kind.AUDIO:
-        content = b"audio"
+        buffer = BytesIO()
+        with wave.open(buffer, "wb") as audio:
+            audio.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
+            audio.writeframes(b"\0" * 3200)
+        content = buffer.getvalue()
         files["audio"] = SimpleUploadedFile("call.wav", content)
     elif kind == Check.Kind.SCREENSHOT:
         buffer = BytesIO()

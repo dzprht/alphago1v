@@ -8,7 +8,8 @@ from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods
 
-from analysis.runtime import load_analyzer
+from analysis.runtime import load_analyzer, load_media_model
+from analysis.url import CATALOGUE_PATH
 from checks.forms import (
     AudioCheckForm, CheckFeedbackForm, ScreenshotCheckForm, TextCheckForm,
     TrainingConsentForm, TransferCheckForm, URLCheckForm,
@@ -48,25 +49,32 @@ def input_view(request, kind):
     form, status = form_class(), 200
     unavailable = not settings.ANALYZER_DIR
     if request.method == "POST":
-        status = 503
-        if not form.is_multipart():
-            form = form_class(request.POST)
-            if not form.is_valid():
-                status = 400
-            else:
-                try:
-                    analyzer = load_analyzer(settings.ANALYZER_DIR)
-                except Exception:
-                    logger.exception("Не удалось загрузить анализатор")
-                    analyzer = None
-                if analyzer is not None:
-                    check = run_check(request.user, kind, form.get_input_data(), analyzer)
-                    if request.user.is_authenticated:
-                        return redirect("checks:detail", check_id=check.pk)
-                    return render(request, "checks/guest_result.html", {"check": check},
-                                  status=200 if check.status == Check.Status.COMPLETED else 503)
-                unavailable = True
-    return render(request, "checks/input.html", {"form": form, "unavailable": unavailable}, status=status)
+        form = form_class(request.POST, request.FILES)
+        status = 400
+        if form.is_valid():
+            status = 503
+            media_model = None
+            try:
+                analyzer = load_analyzer(settings.ANALYZER_DIR)
+                if analyzer is not None and form.is_multipart():
+                    media_model = load_media_model(kind, settings.ANALYZER_DIR)
+            except Exception:
+                logger.exception("Не удалось загрузить анализатор")
+                analyzer = None
+            if analyzer is not None and (not form.is_multipart() or media_model is not None):
+                field = "audio" if kind == Check.Kind.AUDIO else "image"
+                upload = form.cleaned_data[field] if form.is_multipart() else None
+                check = run_check(request.user, kind, form.get_input_data(), analyzer,
+                                  upload=upload, media_model=media_model)
+                if request.user.is_authenticated:
+                    return redirect("checks:detail", check_id=check.pk)
+                return render(request, "checks/guest_result.html", {"check": check},
+                              status=200 if check.status == Check.Status.COMPLETED else 503)
+            unavailable = True
+    organizations = json.loads(CATALOGUE_PATH.read_text(encoding="utf-8"))["brands"] if kind == Check.Kind.URL else []
+    return render(request, "checks/input.html", {
+        "form": form, "unavailable": unavailable, "organizations": organizations,
+    }, status=status)
 
 
 @never_cache

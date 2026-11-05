@@ -58,7 +58,8 @@ def read_scenarios(path):
             raise ValueError("Нужен словарь input_data с проверенными полями")
         if type(row.get("order_known", True)) is not bool:
             raise ValueError("Признак порядка должен быть логическим значением")
-        if "risk" not in row or row["risk"] is not None and (type(row["risk"]) is not int or row["risk"] not in (0, 1, 2)):
+        row.setdefault("risk", None)
+        if row["risk"] is not None and (type(row["risk"]) is not int or row["risk"] not in (0, 1, 2)):
             raise ValueError("Нужна отдельная метка risk 0 1 2 или null")
         target = row.get("target_turn_id")
         if target is not None and (not isinstance(target, str) or not target):
@@ -167,7 +168,7 @@ def prepare_features(plans, output_dir, encoder, source_info):
                     selected_domains=sorted({row["group"] for row in plan["url_train"]}))
         text.save(folder / "text", training_info=info)
         url.save(folder / "url", training_info=info)
-        analyzer = Analyzer(text, url, None, {})
+        analyzer = Analyzer(text, url, {})
         versions = {"text": text.analyzer_version, "url": url.analyzer_version}
         prepared_cases = {}
         for scenario in plan["targets"]:

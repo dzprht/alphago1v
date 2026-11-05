@@ -8,10 +8,10 @@
 
 ```bash
 python -m pip install uv==0.11.7
-uv sync --locked --group ml --no-dev
+uv sync --locked --group ml --group media --no-dev
 uv run --no-sync python manage.py migrate --noinput
 uv run --no-sync python manage.py collectstatic --noinput
-uv run --no-sync gunicorn config.wsgi:application
+uv run --no-sync gunicorn --timeout 180 config.wsgi:application
 ```
 
 Последняя команда записана в `Procfile`. Если платформа его не читает, ее нужно указать как Start Command. Миграции выполняются отдельно перед запуском, а не в каждом процессе сервера.
@@ -56,7 +56,9 @@ CSS хранится в `static/css/site.css`; шаблоны получают �
 
 ## Комплект моделей
 
-Формы текста, ссылки и перевода используют сохраненный Analyzer при настроенном `ANALYZER_DIR`. Рабочий текстовый/risk-корпус, OOF и калибровка еще не подготовлены; существующие демо-артефакты автоматически не включаются.
+Формы текста, ссылки и перевода используют сохраненный Analyzer при настроенном `ANALYZER_DIR`. Комплект содержит только текстовую и URL-модель с восемью порогами; итог собирают правила `warning-rules-v1`, дерево риска не требуется. Демо-артефакты автоматически не включаются.
+
+Текущие нативные загрузчики поддерживают E5 + семь LR и URL CatBoost. Выбранные по экспериментам rubert-tiny2 и символьную CNN еще нужно подключить отдельными адаптерами; их веса нельзя просто положить вместо существующих файлов.
 
 После обучения каталог должен иметь такую структуру:
 
@@ -66,17 +68,15 @@ var/ml/release-01/
   text/manifest.json
   url/model.cbm
   url/manifest.json
-  risk/tree.joblib
-  risk/manifest.json
   calibration.json
 ```
 
 `calibration.json` содержит два объекта:
 
-- `versions`: ключи `text`, `url`, `risk`, значения — точные `analyzer_version` из соответствующих manifest;
+- `versions`: ключи `text`, `url`, значения — точные `analyzer_version` из соответствующих manifest;
 - `thresholds`: числовые пороги `text_urgency`, `text_money_request`, `text_credentials_request`, `text_secrecy`, `text_remote_access`, `text_authority_claim`, `text_protective_transfer`, `url_score`, все от 0 до 1.
 
-Пороги выбираются на calibration, а не заполняются одним произвольным значением. Загрузчик проверяет состав и версии, но качество обучения подтверждают отдельные эксперименты.
+Пороги выбираются на calibration, а не заполняются одним произвольным значением. Они превращают оценки моделей в флаги для правил и показа оснований. Загрузчик проверяет состав и версии, но качество обучения подтверждают отдельные эксперименты. Старый calibration с обязательной URL/text/risk-привязкой нужно сформировать заново для комплекта из двух моделей.
 
 Для E5 нужны зависимости группы `ml` и заранее подготовленный кэш `var/ml/cache` проекта. Первое скачивание закрепленной модели выполняется отдельно до запуска сайта:
 
@@ -86,6 +86,6 @@ uv run --no-sync python -c 'from analysis.text import E5Encoder; E5Encoder(allow
 
 Затем задается `ANALYZER_DIR=var/ml/release-01` и перезапускается Gunicorn. Веб-запросы используют только локальный кэш; скачивания в них отключены. Комплект загружается один раз на процесс; после замены файлов по тому же пути требуется перезапуск. При отсутствии или несовместимости комплекта POST возвращает 503 без создания проверки. Неверный ввод возвращает 400 до загрузки моделей.
 
-Медиа-обработка выключена. Проверка настроек и HTTP с тестовыми ответами не заменяет проверку качества рабочих моделей и сайта на хостинге.
+HTTP-загрузки аудио и скриншотов подключены при наличии локальных распознавателей в media.json. Форматы, лимиты, временные файлы и кэш описаны в [MEDIA.md](MEDIA.md), демо — в [DEMO.md](DEMO.md). Проверка HTTP с подставными ответами не заменяет проверку качества рабочих моделей и сайта на хостинге.
 
 Документация: [Gunicorn](https://github.com/benoitc/gunicorn/blob/master/docs/content/run.md), [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/), [WhiteNoise и Django](https://whitenoise.readthedocs.io/en/stable/django.html), [переменные клиента PostgreSQL](https://www.postgresql.org/docs/17/libpq-envars.html).

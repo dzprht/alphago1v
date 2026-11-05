@@ -1,0 +1,20 @@
+{
+  "audio": {
+    "whisper_dir": "../media/whisper-small",
+    "diarization_dir": "../media/pyannote",
+    "model_versions": {
+      "whisper": "replace-with-local-revision",
+      "diarization": "replace-with-local-revision"
+    },
+    "quality": {
+      "min_word_probability": 0.7,
+      "min_avg_logprob": -1.0,
+      "max_no_speech_probability": 0.6,
+      "max_turn_gap": 0.5
+    }
+  },
+  "screenshot": {
+    "directory": "../media/easyocr",
+    "min_confidence": 0.5
+  }
+}

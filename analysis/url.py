@@ -117,24 +117,36 @@ def brand_signals(info, expected_site="", catalogue=None):
         except ValueError:
             pass
     decoded = info["host"] if info["features"]["host_is_ip"] else idna.decode(info["host"])
+    specific = catalogue.get("matching_policy") == "specific-domain-v2"
     matches = []
     for brand in catalogue["brands"]:
+        priority = (False, 1)
         if expected:
             matched = expected in {
                 re.sub(r"[\W_]+", "", alias.casefold()) for alias in [brand["name"]] + brand["aliases"]
             }
             if expected_host:
-                matched = matches_domains(expected_host, brand["domains"])
+                domains = [domain for domain in brand["domains"] if matches_domains(expected_host, [domain])]
+                matched = bool(domains)
+                if specific and matched:
+                    priority = (True, max(len(normalize_host(domain)[0]) for domain in domains))
         else:
-            matched = any(
-                re.search(r"(?:^|[.\-])" + re.escape(alias.casefold()) + r"(?=$|[.\-])", decoded)
-                for alias in brand["host_aliases"]
-            )
+            aliases = [alias for alias in brand["host_aliases"] if re.search(
+                r"(?:^|[.\-])" + re.escape(alias.casefold()) + r"(?=$|[.\-])", decoded
+            )]
+            domains = [domain for domain in brand["domains"] if specific and matches_domains(info["host"], [domain])]
+            matched = bool(aliases or domains)
+            if specific and domains:
+                priority = (True, max(len(normalize_host(domain)[0]) for domain in domains))
+            elif specific and aliases:
+                priority = (False, max(map(len, aliases)))
         if matched:
-            matches.append(brand)
-    if len(matches) != 1:
+            matches.append((priority, brand))
+    best = max((priority for priority, brand in matches), default=None)
+    selected = [brand for priority, brand in matches if priority == best]
+    if len(selected) != 1:
         return {"brand_mismatch": None, "brand_comparison_available": False, "brand": None}
-    brand = matches[0]
+    brand = selected[0]
     matched = matches_domains(info["host"], brand["domains"])
     return {"brand_mismatch": int(not matched), "brand_comparison_available": True, "brand": brand["name"]}
 

@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 
 from analysis.pipeline import Analyzer
-from analysis.risk import RISK_FEATURES, RiskModel
+from analysis.risk import RISK_FEATURES
 from analysis.runtime import THRESHOLD_NAMES
 from analysis.text import E5Encoder, TextModel
 from analysis.url import URLModel
-from ml.prepare_risk import read_scenarios
+from ml.prepare_risk import case_domains, read_scenarios
 
 
 def score_cases(scenarios, analyzer, versions, split):
@@ -43,6 +43,7 @@ def score_cases(scenarios, analyzer, versions, split):
         result.append({"case_id": row["case_id"], "group_id": row["group_id"],
                        "target_turn_id": row.get("target_turn_id"), "split": split,
                        "prediction_origin": "heldout", "model_versions": versions,
+                       "domains": sorted(case_domains(row)),
                        "labels": row["labels"], "scores": scores})
     return result
 
@@ -59,13 +60,11 @@ def main():
         if args.output.exists():
             raise ValueError("Файл результата уже существует")
         scenarios, source = read_scenarios(args.scenarios)
-        risk = RiskModel.load(args.model_dir / "risk")
         encoder = E5Encoder(allow_download=False)
         text = TextModel.load(args.model_dir / "text", encoder)
         url = URLModel.load(args.model_dir / "url")
-        analyzer = Analyzer(text, url, None, {})
-        rows = score_cases(scenarios, analyzer, {"text": text.analyzer_version, "url": url.analyzer_version,
-                                               "risk": risk.analyzer_version}, args.split)
+        analyzer = Analyzer(text, url, {})
+        rows = score_cases(scenarios, analyzer, {"text": text.analyzer_version, "url": url.analyzer_version}, args.split)
         raw = "".join(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n" for row in rows).encode()
         args.output.parent.mkdir(parents=True, exist_ok=True)
         with args.output.open("xb") as output:

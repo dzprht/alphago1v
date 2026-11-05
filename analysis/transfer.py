@@ -10,11 +10,11 @@ TRANSFER_FEATURES = (
     "recipient_count_log", "recipient_share", "last_recipient_days",
 )
 MIN_HISTORY = 20
-TRANSFER_VERSION = "transfer-v1"
+TRANSFER_VERSION = "transfer-v2"
 
 
 def transfer_features(amount_kopecks, recipient="", history=None, *, checked_at):
-    # считает признаки суммы и истории для итоговой модели
+    # считает статистику истории и флаги перевода
     if checked_at.utcoffset() is None:
         raise ValueError("Момент проверки должен содержать часовой пояс")
     checked_at = checked_at.astimezone(timezone.utc)
@@ -27,6 +27,7 @@ def transfer_features(amount_kopecks, recipient="", history=None, *, checked_at)
             all(row["occurred_at"] <= checked_at for row in history)
         ),
         recipient_provided=int(bool(recipient)),
+        amount_unusual=None, amount_modified_z=None, recipient_unseen=None,
     )
     if values["history_valid"]:
         outgoing = [row for row in history if row["direction"] == "outgoing"]
@@ -43,12 +44,23 @@ def transfer_features(amount_kopecks, recipient="", history=None, *, checked_at)
             middle = median([Decimal(amount) for amount in amounts])
             values["amount_percentile"] = sum(amount <= amount_kopecks for amount in amounts) / n
             values["amount_median_log_ratio"] = log(Decimal(amount_kopecks) / middle)
+            mad = median([abs(Decimal(amount) - middle) for amount in amounts])
+            if mad:
+                score = Decimal("0.6745") * (Decimal(amount_kopecks) - middle) / mad
+                values["amount_modified_z"] = float(score)
+                values["amount_unusual"] = int(score > Decimal("3.5"))
         if recipient:
             matches = [row for row in known if row["recipient"] == recipient]
             values["recipient_count_log"] = log1p(len(matches))
             if known:
                 values["recipient_share"] = len(matches) / len(known)
+                values["recipient_unseen"] = int(not matches)
             if matches:
                 last = max(row["occurred_at"] for row in matches)
                 values["last_recipient_days"] = (checked_at - last).total_seconds() / 86400
-    return {"analyzer_version": TRANSFER_VERSION, "values": values}
+    refs = {}
+    if values["amount_unusual"] is not None:
+        refs["amount_unusual"] = {"field": "amount", "statistic": "modified_z", "z": values["amount_modified_z"]}
+    if values["recipient_unseen"] is not None:
+        refs["recipient_unseen"] = {"field": "recipient", "statistic": "history_matches"}
+    return {"analyzer_version": TRANSFER_VERSION, "values": values, "source_refs": refs}

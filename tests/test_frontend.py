@@ -1,7 +1,9 @@
 import re
+from types import SimpleNamespace
 
 import pytest
 from django.core.files.base import ContentFile
+from django.template.loader import render_to_string
 from django.urls import reverse
 
 from accounts.models import User
@@ -82,3 +84,37 @@ def test_csv_table_has_caption_column_headers_and_scroll_container(client):
     assert re.search(r'<caption\b[^>]*>\s*Загруженные операции\s*</caption>', html)
     assert len(re.findall(r'<th\b[^>]*\bscope="col"', html)) == 4
     assert 'shop_1' in html
+
+
+@pytest.mark.parametrize("warning,findings,status,sufficiency,title", [
+    (True, [], "partial", "limited", "Перепроверьте перед выполнением действия"),
+    (False, [{"description": "Нетипичная сумма"}], "ok", "limited", "Есть сведения для перепроверки"),
+    (False, [], "ok", "sufficient", "Оснований для предупреждения не обнаружено"),
+    (False, [{"description": "Найден фрагмент"}], "partial", "limited", "Недостаточно данных для общего вывода"),
+])
+def test_rule_result_separates_banner_remarks_and_incomplete_analysis(warning, findings, status, sufficiency, title):
+    # различает предупреждение замечания и неполный анализ
+    result = {"policy": "warning-rules-v1", "warning": warning, "findings": findings,
+              "status": status, "sufficiency": sufficiency, "risk": 2,
+              "warning_reasons": ["Просьба о деньгах со срочностью"]}
+    html = render_to_string("checks/result.html", {"check": SimpleNamespace(
+        status="completed", result=result, extracted_text="", analyzer_version="rules-test",
+    )})
+    heading = re.search(r'<h2 class="result-title">(.*?)</h2>', html, re.DOTALL).group(1).strip()
+    assert heading == title
+    assert "Выраженная опасность" not in html
+    assert ("Просьба о деньгах со срочностью" in html) is warning
+
+
+def test_history_evidence_and_legacy_risk_are_still_readable():
+    # показывает источник истории и прежний сохраненный результат
+    finding = {"description": "Нетипичная сумма", "feature": "amount_unusual", "evidence": [
+        {"origin": "history", "source_ref": {"text": "<script>"}},
+    ]}
+    result = {"status": "ok", "risk": 1, "sufficiency": "limited", "findings": [finding]}
+    html = render_to_string("checks/result.html", {"check": SimpleNamespace(
+        status="completed", result=result, extracted_text="", analyzer_version="old-test",
+    )})
+    assert "Есть основания насторожиться" in html
+    assert "Сравнение с вашей историей" in html
+    assert "&lt;script&gt;" in html and "<script>" not in html

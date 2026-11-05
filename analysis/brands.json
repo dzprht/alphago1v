@@ -1,5 +1,6 @@
 {
-  "version": "2026-11-01",
+  "version": "2026-11-05",
+  "matching_policy": "specific-domain-v2",
   "brands": [
     {
       "name": "Альфа-Банк",
@@ -7,7 +8,7 @@
       "host_aliases": ["alfabank", "alfa-bank", "альфабанк", "альфа-банк"],
       "domains": ["alfabank.ru", "alfa-bank.ru", "alfabank.com", "alfa-bank.com", "alfabank.sale", "alfafinance.ru", "aclub.ru", "alfafuture.com", "alfafuture.ru", "alfaleasing.ru", "baltbank.ru", "альфа-секьюр.рф"],
       "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027700067328"],
-      "checked_at": "2026-11-01"
+      "checked_at": "2026-11-05"
     },
     {
       "name": "Сбербанк",
@@ -15,7 +16,7 @@
       "host_aliases": ["sber", "sberbank", "сбер", "сбербанк"],
       "domains": ["sberbank.ru", "sber.ru", "sberbank.com", "sbrf.ru", "sberbank1.ru", "sberbankaktivno.ru", "sberindex.ru", "sbersova.ru", "sbertv.ru", "pokupay.ru", "clickstream.ru", "portal-da.ru", "sberclickstream.ru", "sberminor.ru"],
       "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027700132195"],
-      "checked_at": "2026-11-01"
+      "checked_at": "2026-11-05"
     },
     {
       "name": "ВТБ",
@@ -23,7 +24,488 @@
       "host_aliases": ["vtb", "втб"],
       "domains": ["vtb.ru", "vtb.com", "vtb.promo", "vtb24.ru", "vtbfamily.ru", "vtbklassika.ru", "vtbrussia.ru", "vtbstrana.ru", "cscampus.ru", "vtb.bank.in", "vtb.corp.ru", "vtb.fut.ru", "vtb-grants.fut.ru", "vtb-liga.fut.ru", "втб.рф"],
       "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739609391"],
-      "checked_at": "2026-11-01"
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Абсолют Банк",
+      "aliases": ["абсолютбанк", "absolut bank", "absolutbank"],
+      "host_aliases": ["absolutbank", "абсолютбанк"],
+      "domains": ["absolutbank.ru", "absolutbank.com", "absolutvip.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027700024560"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Ак Барс Банк",
+      "aliases": ["акбарс", "ак барс", "ak bars bank", "akbars"],
+      "host_aliases": ["akbars", "акбарс"],
+      "domains": ["akbars.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1021600000124"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк Авангард",
+      "aliases": ["авангард банк", "avangard bank", "bank avangard", "авангард"],
+      "host_aliases": ["bankavangard", "avangard-bank", "банкавангард"],
+      "domains": ["avangard.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027700367507"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк ДОМ.РФ",
+      "aliases": ["дом рф банк", "домрфбанк", "domrf bank", "domrfbank"],
+      "host_aliases": ["domrfbank", "bankdomrf", "домрфбанк"],
+      "domains": ["domrfbank.ru", "bankdomrf.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1037739527077"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк Зенит",
+      "aliases": ["зенит банк", "zenit bank", "bank zenit"],
+      "host_aliases": ["bankzenit", "zenit-bank", "банкзенит"],
+      "domains": ["zenit.ru", "zenitcard.ru", "cardzenit.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739056927"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк ПСБ",
+      "aliases": ["псб", "psb", "промсвязьбанк", "promsvyazbank", "psbank"],
+      "host_aliases": ["psbank", "promsvyazbank", "промсвязьбанк"],
+      "domains": ["psbank.ru", "psblog.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739019142"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк Россия",
+      "aliases": ["аб россия", "банк россия", "rossiya bank", "bank rossiya"],
+      "host_aliases": ["bankrossiya", "банкроссия", "abr-bank"],
+      "domains": ["abr.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027800000084"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк Русский Стандарт",
+      "aliases": ["русский стандарт", "russian standard bank", "russian standard", "rsb"],
+      "host_aliases": ["rsb-bank", "russianstandard", "русский-стандарт"],
+      "domains": ["rsb.ru", "onlinecredit.ru", "daricard.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739210630"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк Санкт-Петербург",
+      "aliases": ["банк санкт петербург", "бспб", "bspb", "saint petersburg bank"],
+      "host_aliases": ["bspb", "бспб"],
+      "domains": ["bspb.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027800000140"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк Синара",
+      "aliases": ["синара банк", "sinara bank", "banksinara", "делобанк", "delo bank", "delobank"],
+      "host_aliases": ["banksinara", "sinara-bank", "банксинара", "delobank"],
+      "domains": ["sinara.ru", "delo.ru", "sinara-finance.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1026600000460"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк Точка",
+      "aliases": ["точка банк", "tochka bank", "bank tochka", "точка"],
+      "host_aliases": ["tochka-bank", "banktochka", "банкточка"],
+      "domains": ["tochka.com"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1237700005157"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "БКС Банк",
+      "aliases": ["бксбанк", "bcs bank", "bcsbank"],
+      "host_aliases": ["bcs-bank", "bcsbank", "бксбанк", "бкс-банк"],
+      "domains": ["bcs-bank.ru", "bcs-bank.com"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1055400000369"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Газпромбанк",
+      "aliases": ["газпром банк", "гпб", "gazprombank", "gazprom bank", "gpb"],
+      "host_aliases": ["gazprombank", "газпромбанк"],
+      "domains": ["gazprombank.ru", "gpb.ru", "gazprombank.tech", "gazprompay.ru", "sbpgpb.ru", "gorodpay.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027700167110"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Кредит Европа Банк",
+      "aliases": ["кредит европа", "credit europe bank", "crediteurope"],
+      "host_aliases": ["crediteurope", "кредитевропа"],
+      "domains": ["crediteurope.ru", "cardcredit.ru", "comfortcredit.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1037739326063"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Локо-Банк",
+      "aliases": ["локо банк", "локобанк", "lockobank", "loco bank", "loko bank"],
+      "host_aliases": ["lockobank", "lokobank", "локо-банк", "локобанк"],
+      "domains": ["lockobank.ru", "lokobank.ru", "locko-bank.info", "locko-bank.su", "lockobank.su", "локобанк.рф", "локо-банк.рф"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1057711014195"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Модульбанк",
+      "aliases": ["модуль банк", "modulbank", "modul bank"],
+      "host_aliases": ["modulbank", "модульбанк"],
+      "domains": ["modulbank.ru", "hicebank.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1022200525841"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Московский кредитный банк",
+      "aliases": ["мкб", "mkb", "moscow credit bank"],
+      "host_aliases": ["mkb", "мкб"],
+      "domains": ["mkb.ru", "мкб.рф", "dvbank.ru", "kubank.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739555282"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "МТС Банк",
+      "aliases": ["мтсбанк", "mts bank", "mtsbank"],
+      "host_aliases": ["mtsbank", "mts-bank", "мтс-банк", "мтсбанк"],
+      "domains": ["mtsbank.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739053704"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Новикомбанк",
+      "aliases": ["новиком", "novikom", "novikombank"],
+      "host_aliases": ["novikom", "novikombank", "новикомбанк"],
+      "domains": ["novikom.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739075891"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Озон Банк",
+      "aliases": ["озонбанк", "ozon bank", "ozonbank"],
+      "host_aliases": ["ozonbank", "ozon-bank", "озонбанк", "озон-банк"],
+      "domains": ["finance.ozon.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1227700133792"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "ОТП Банк",
+      "aliases": ["отп", "otp", "otp bank", "otpbank"],
+      "host_aliases": ["otpbank", "otp-bank", "отпбанк", "отп-банк"],
+      "domains": ["otpbank.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739176563"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Райффайзенбанк",
+      "aliases": ["райффайзен", "райффайзен банк", "райф", "raiffeisen", "raiffeisenbank", "raiffeisen bank", "raif"],
+      "host_aliases": ["raiffeisen", "raiffeisenbank", "райффайзен"],
+      "domains": ["raiffeisen.ru", "raiffeisenbank.ru", "raif.ru", "rzb.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739326449"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Реалист Банк",
+      "aliases": ["реалистбанк", "realist bank", "realistbank"],
+      "host_aliases": ["realistbank", "реалистбанк"],
+      "domains": ["realistbank.ru", "ntx-bank.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1023800000124"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Ренессанс Банк",
+      "aliases": ["ренессанс кредит", "ренессанс кредит банк", "rencredit", "renaissance credit", "renaissance bank"],
+      "host_aliases": ["rencredit", "renaissancecredit", "ренессанс-кредит"],
+      "domains": ["rencredit.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739586291"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "РосДорБанк",
+      "aliases": ["росдор банк", "rosdorbank", "rosdor bank"],
+      "host_aliases": ["rosdorbank", "росдорбанк"],
+      "domains": ["rdb.ru", "rosdorbank.ru", "рдб.рф", "росдорбанк.рф"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739857958"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Россельхозбанк",
+      "aliases": ["рсхб", "россельхоз банк", "rshb", "rosselkhozbank"],
+      "host_aliases": ["rshb", "rosselkhozbank", "россельхозбанк"],
+      "domains": ["rshb.ru", "rshbdigital.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027700342890"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Свой Банк",
+      "aliases": ["свойбанк", "svoi bank", "svoibank"],
+      "host_aliases": ["svoibank", "svoi-bank", "свойбанк", "свой-банк"],
+      "domains": ["svoi.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1026400001870"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "СДМ-Банк",
+      "aliases": ["сдм банк", "sdm bank", "sdmbank"],
+      "host_aliases": ["sdmbank", "sdm-bank", "сдм-банк"],
+      "domains": ["sdm.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739296584"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Совкомбанк",
+      "aliases": ["sovcombank", "совком банк", "халва", "хоум кредит", "home credit", "хоум банк"],
+      "host_aliases": ["sovcombank", "совкомбанк", "halvacard", "homecredit"],
+      "domains": ["sovcombank.ru", "sovcombank.com", "sovcombank.business", "sovcombank.credit", "sovcombank.info", "halvacard.ru", "gethalva.ru", "halvaclub.ru", "home.bank", "homebank.ru", "homecredit.ru", "vostbank.ru", "rosevrobank.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1144400000425"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Т-Банк",
+      "aliases": ["тбанк", "т банк", "tbank", "t bank", "тинькофф", "тинькофф банк", "tinkoff", "tinkoff bank", "росбанк", "rosbank"],
+      "host_aliases": ["tbank", "tinkoff", "тинькофф", "rosbank", "росбанк"],
+      "domains": ["tbank.ru", "tinkoff.ru", "rosbank.ru", "rosbank-auto.ru", "custody.ru", "private-banking.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739642281"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "УБРиР",
+      "aliases": ["уральский банк реконструкции и развития", "убрир", "ubrr"],
+      "host_aliases": ["ubrr", "убрир"],
+      "domains": ["ubrr.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1026600000350"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Уралсиб",
+      "aliases": ["банк уралсиб", "uralsib", "uralsib bank", "bankuralsib"],
+      "host_aliases": ["uralsib", "bankuralsib", "уралсиб"],
+      "domains": ["uralsib.ru", "bankuralsib.ru", "dbo.uralsibbank.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1020280000190"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Цифра Банк",
+      "aliases": ["цифрабанк", "cifra bank", "cifrabank"],
+      "host_aliases": ["cifra-bank", "cifrabank", "цифрабанк", "цифра-банк"],
+      "domains": ["cifra-bank.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1026500000317"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "ЮниКредит Банк",
+      "aliases": ["юникредит", "unicredit", "unicredit bank"],
+      "host_aliases": ["unicredit", "юникредит"],
+      "domains": ["unicredit.ru", "unicreditbank.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1027739082106"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Яндекс Банк",
+      "aliases": ["яндексбанк", "yandex bank", "yandexbank", "yabank"],
+      "host_aliases": ["yabank", "yandex-bank", "яндекс-банк", "яндексбанк"],
+      "domains": ["yabank.yandex.ru", "bank.yandex.ru"],
+      "sources": ["https://www.cbr.ru/finorg/foinfo/?ogrn=1077711000091", "https://yandex.ru/legal/bank_security_measures_ofc_yandex/ru/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Ozon",
+      "aliases": ["Озон"],
+      "host_aliases": ["ozon", "озон"],
+      "domains": ["ozon.ru"],
+      "sources": ["https://www.ozon.ru/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "t2",
+      "aliases": ["Т2", "Теле2", "Tele2"],
+      "host_aliases": ["t2", "tele2", "теле2"],
+      "domains": ["t2.ru"],
+      "sources": ["https://s3.t2.ru/ds-site/docs/finservice/finservices-user-agreement.pdf", "https://selfcare.t2.ru/about/company/about-company"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Telegram",
+      "aliases": ["Телеграм", "Телеграмм"],
+      "host_aliases": ["telegram", "телеграм", "телеграмм"],
+      "domains": ["telegram.org", "t.me", "telegram.me", "telegram.dog"],
+      "sources": ["https://telegram.org/", "https://core.telegram.org/api/links"],
+      "checked_at": "2026-11-05",
+      "notes": "Домен Telegram не подтверждает подлинность пользователя канала или бота"
+    },
+    {
+      "name": "Wildberries",
+      "aliases": ["Вайлдберриз", "Вайлдберис", "ВБ", "WB"],
+      "host_aliases": ["wildberries", "вайлдберриз", "вайлдберис"],
+      "domains": ["wildberries.ru", "wb.ru"],
+      "sources": ["https://www.wildberries.ru/", "https://www.fips.ru/pps/29_01_25/2023%D0%9203075.pdf"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Авито",
+      "aliases": ["Avito"],
+      "host_aliases": ["avito", "авито"],
+      "domains": ["avito.ru"],
+      "sources": ["https://www.paymentkit.ru/doc/Usloviya_osuschestvleniya_perevoda_denejnyh_sredstv_s_ispolzovaniem_Internet-resursa.pdf"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Аэрофлот",
+      "aliases": ["Aeroflot"],
+      "host_aliases": ["aeroflot", "аэрофлот"],
+      "domains": ["aeroflot.ru"],
+      "sources": ["https://www.aeroflot.ru/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Банк России",
+      "aliases": ["ЦБ", "ЦБ РФ", "Центробанк", "Центральный банк", "Центральный банк Российской Федерации", "CBR"],
+      "host_aliases": ["cbr", "центробанк"],
+      "domains": ["cbr.ru"],
+      "sources": ["https://www.cbr.ru/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Билайн",
+      "aliases": ["beeline", "ВымпелКом"],
+      "host_aliases": ["beeline", "билайн"],
+      "domains": ["beeline.ru"],
+      "sources": ["https://moskva.beeline.ru/customers/products/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "ВКонтакте",
+      "aliases": ["VK", "ВК", "VKontakte"],
+      "host_aliases": ["vkontakte", "вконтакте"],
+      "domains": ["vk.ru", "vk.com"],
+      "sources": ["https://help.mail.ru/legal/terms/youla/raising/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Госуслуги",
+      "aliases": ["gosuslugi", "ЕСИА", "ESIA"],
+      "host_aliases": ["gosuslugi", "госуслуги", "esia"],
+      "domains": ["gosuslugi.ru"],
+      "sources": ["https://www.gosuslugi.ru/", "https://info.gosuslugi.ru/download.php?id=1180"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Деловые Линии",
+      "aliases": ["Dellin"],
+      "host_aliases": ["dellin", "деловые-линии"],
+      "domains": ["dellin.ru"],
+      "sources": ["https://www.dellin.ru/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "МегаФон",
+      "aliases": ["Megafon"],
+      "host_aliases": ["megafon", "мегафон"],
+      "domains": ["megafon.ru"],
+      "sources": ["https://shop.megafon.ru/", "https://ceph.megafon.ru/htdocs-pk-ceph/ai/option_attrs/ac3834e1-31c5-4ccf-8258-bcfb3eb64577/941ef99e-a1a2-4aae-9a6b-1a8db2b5d715/pdf/option_11111102_93b4c.pdf"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "МТС",
+      "aliases": ["MTS", "Мобильные ТелеСистемы"],
+      "host_aliases": ["mts", "мтс"],
+      "domains": ["mts.ru"],
+      "sources": ["https://moskva.mts.ru/personal"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Почта Mail",
+      "aliases": ["Mail.ru", "Почта Mail.ru", "Мейл", "Мэйл", "Майл"],
+      "host_aliases": ["mailru", "mail-ru", "мейл", "мэйл"],
+      "domains": ["mail.ru"],
+      "sources": ["https://help.mail.ru/legal/terms/mail/ua/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Почта России",
+      "aliases": ["Russian Post", "pochta"],
+      "host_aliases": ["pochta", "почта-россии"],
+      "domains": ["pochta.ru"],
+      "sources": ["https://info.pochta.ru/support/popular-questions/leave-a-complaint"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "ПЭК",
+      "aliases": ["ПЕК", "PEK", "PECOM", "Первая экспедиционная компания"],
+      "host_aliases": ["pecom", "пэк"],
+      "domains": ["pecom.ru"],
+      "sources": ["https://pecom.ru/info/promokody-i-ogranicheniya/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "РЖД",
+      "aliases": ["Российские железные дороги", "RZD"],
+      "host_aliases": ["rzd", "ржд"],
+      "domains": ["rzd.ru"],
+      "sources": ["https://dzdvgg.rzd.ru/upload/docx/obrazovanie/dop-lokomotivy-i-lokomotivnoe-hozyajstvo-4-kurs.pdf"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Ростелеком",
+      "aliases": ["Rostelecom"],
+      "host_aliases": ["rostelecom", "ростелеком"],
+      "domains": ["rt.ru"],
+      "sources": ["https://www.company.rt.ru/contacts/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "СДЭК",
+      "aliases": ["CDEK", "СДЕК"],
+      "host_aliases": ["cdek", "сдэк", "сдек"],
+      "domains": ["cdek.ru"],
+      "sources": ["https://www.cdek.ru/ru/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Социальный фонд России",
+      "aliases": ["СФР", "соцфонд", "SFR"],
+      "host_aliases": ["sfr", "сфр"],
+      "domains": ["sfr.gov.ru"],
+      "sources": ["https://sfr.gov.ru/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "ФНС России",
+      "aliases": ["ФНС", "налоговая", "Федеральная налоговая служба", "nalog", "FNS"],
+      "host_aliases": ["nalog", "фнс"],
+      "domains": ["nalog.gov.ru", "nalog.ru"],
+      "sources": ["https://www.nalog.gov.ru/rn77/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "ФССП России",
+      "aliases": ["ФССП", "судебные приставы", "Федеральная служба судебных приставов", "FSSP"],
+      "host_aliases": ["fssp", "фссп"],
+      "domains": ["fssp.gov.ru"],
+      "sources": ["https://linkeddata.fssp.gov.ru/page/resource/agency_98390"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "ЮKassa",
+      "aliases": ["Юкасса", "YooKassa", "Яндекс Касса"],
+      "host_aliases": ["yookassa", "юкасса"],
+      "domains": ["yookassa.ru"],
+      "sources": ["https://yookassa.ru/", "https://yookassa.ru/about/"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "ЮMoney",
+      "aliases": ["ЮМани", "YooMoney", "Яндекс Деньги"],
+      "host_aliases": ["yoomoney", "юмани"],
+      "domains": ["yoomoney.ru"],
+      "sources": ["https://yoomoney.ru/", "https://yoomoney.ru/document/platejniie-servis-yoomoney-zavershaet-pereimenovanie"],
+      "checked_at": "2026-11-05"
+    },
+    {
+      "name": "Яндекс",
+      "aliases": ["Yandex"],
+      "host_aliases": ["yandex", "яндекс"],
+      "domains": ["yandex.ru", "ya.ru"],
+      "sources": ["https://yandex.ru/company/"],
+      "checked_at": "2026-11-05"
     }
   ]
 }

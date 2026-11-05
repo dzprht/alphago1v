@@ -9,11 +9,12 @@ from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from transactions.forms import TransactionUploadForm
+from transactions.forms import MAX_MANUAL_ROWS, ManualTransactionFormSet, TransactionUploadForm
 from transactions.services import (
     delete_user_transactions,
     get_user_transactions,
     import_transactions,
+    replace_transactions,
 )
 
 
@@ -22,11 +23,26 @@ from transactions.services import (
 @require_http_methods(["GET", "POST"])
 def history_view(request):
     # показывает свои операции и принимает новую историю
+    action = request.POST.get("action", "csv") if request.method == "POST" else ""
     form = TransactionUploadForm(
-        data=request.POST if request.method == "POST" else None,
-        files=request.FILES if request.method == "POST" else None,
+        data=request.POST if action == "csv" else None,
+        files=request.FILES if action == "csv" else None,
     )
-    if request.method == "POST" and form.is_valid():
+    manual_data = request.POST if action in ("manual", "add_row") else None
+    if action == "add_row":
+        manual_data = request.POST.copy()
+        submitted = ManualTransactionFormSet(manual_data, prefix="rows")
+        if submitted.management_form.is_valid():
+            count = min(max(submitted.total_form_count(), 0) + 1, MAX_MANUAL_ROWS)
+            manual_data["rows-TOTAL_FORMS"] = str(count)
+            manual_data.setdefault(f"rows-{count - 1}-direction", "outgoing")
+    manual_forms = ManualTransactionFormSet(manual_data, prefix="rows")
+    if action == "manual" and manual_forms.is_valid():
+        rows = [item.cleaned_data["operation"] for item in manual_forms
+                if item.cleaned_data and not item.cleaned_data.get("DELETE")]
+        replace_transactions(request.user, rows)
+        return redirect(reverse("transactions:history") + "?imported=1")
+    if action == "csv" and form.is_valid():
         try:
             import_transactions(request.user, form.cleaned_data["file"])
         except ValidationError as error:
@@ -42,6 +58,8 @@ def history_view(request):
         "transactions/history.html",
         {
             "form": form,
+            "manual_forms": manual_forms,
+            "max_manual_rows": MAX_MANUAL_ROWS,
             "transactions": transactions,
             "imported": request.GET.get("imported") == "1",
             "deleted": request.GET.get("deleted") == "1",

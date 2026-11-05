@@ -31,6 +31,7 @@ def calibration_rows(versions):
     # создает оценки с одинаковым лучшим F1 на двух порогах
     return [{"case_id": f"cal-case-{index}", "group_id": f"cal-group-{index}", "target_turn_id": None,
              "split": "calibration", "prediction_origin": "heldout", "model_versions": versions,
+             "domains": [f"cal-{index}.example.com"],
              "labels": dict.fromkeys(THRESHOLD_NAMES, label), "scores": dict.fromkeys(THRESHOLD_NAMES, score)}
             for index, (label, score) in enumerate(((1, 0.1), (0, 0.2), (0, 0.3), (1, 0.4), (None, 0.99)))]
 
@@ -120,24 +121,34 @@ def test_calibration_uses_known_labels_and_higher_tied_threshold(tmp_path):
 
 def test_calibration_export_binds_models_and_rejects_training_overlap(tmp_path, monkeypatch, capsys):
     # сохраняет полный комплект порогов только после проверки происхождения
-    versions = {"text": "text-final", "url": "url-final", "risk": "risk-final"}
+    versions = {"text": "text-final", "url": "url-final"}
     for name, version in versions.items():
         folder = tmp_path / name
         folder.mkdir()
-        manifest = {"analyzer_version": version}
-        if name == "risk":
-            manifest["training"] = {"train": {"group_ids": ["cal-group-0"], "case_ids": ["train-case"]}}
+        manifest = {"analyzer_version": version, "training": {
+            "selected_group_ids": ["train-group"], "selected_case_ids": ["train-case"],
+            "selected_domains": ["train.example.com"],
+        }}
         (folder / "manifest.json").write_text(json.dumps(manifest))
     path, output = tmp_path / "scores.jsonl", tmp_path / "calibration.json"
     write_rows(path, calibration_rows(versions))
     monkeypatch.setattr("sys.argv", ["calibrate", str(path), str(tmp_path)])
+    text_manifest_path = tmp_path / "text/manifest.json"
+    original = json.loads(text_manifest_path.read_text())
+    for field, value in (("selected_group_ids", "cal-group-0"), ("selected_case_ids", "cal-case-0"),
+                         ("selected_domains", "cal-0.example.com")):
+        manifest = json.loads(json.dumps(original))
+        manifest["training"][field] = [value]
+        text_manifest_path.write_text(json.dumps(manifest))
+        with pytest.raises(SystemExit):
+            calibrate.main()
+        assert "пересекается" in capsys.readouterr().err and not output.exists()
+    manifest["training"].pop("selected_domains")
+    text_manifest_path.write_text(json.dumps(manifest))
     with pytest.raises(SystemExit):
         calibrate.main()
-    assert "пересекается" in capsys.readouterr().err and not output.exists()
-    risk_manifest_path = tmp_path / "risk/manifest.json"
-    manifest = json.loads(risk_manifest_path.read_text())
-    manifest["training"]["train"]["group_ids"] = ["train-group"]
-    risk_manifest_path.write_text(json.dumps(manifest))
+    assert "отсутствует" in capsys.readouterr().err and not output.exists()
+    text_manifest_path.write_text(json.dumps(original))
     rows = calibration_rows(versions)
     rows[0]["model_versions"] = {**versions, "text": "wrong-model"}
     write_rows(path, rows)

@@ -7,9 +7,7 @@
         <h1>{{ form.kind.label }}</h1>
         <p>Заполните основные поля. Остальные сведения можно добавить, если они известны.</p>
     </div>
-    {% if form.is_multipart %}
-    <div class="notice notice--warning" role="status"><strong>Загрузка пока недоступна</strong><p>Загрузка файлов станет доступна после выбора форматов и лимитов обработки.</p></div>
-    {% elif unavailable %}
+    {% if unavailable %}
     <div class="notice notice--warning" role="status"><strong>Анализ пока не подключен</strong><p>Проверка сейчас недоступна. Введенные данные не сохраняются.</p></div>
     {% endif %}
     {% if not user.is_authenticated %}
@@ -18,8 +16,13 @@
     <div class="panel">
         <form method="post" {% if form.is_multipart %}enctype="multipart/form-data"{% endif %}>
             {% csrf_token %}
-            <fieldset {% if form.is_multipart %}disabled{% endif %}>
+            <fieldset>
                 {% include "includes/form_fields.html" %}
+                {% if organizations %}
+                <datalist id="expected-organizations">
+                    {% for organization in organizations %}<option value="{{ organization.name }}">{% endfor %}
+                </datalist>
+                {% endif %}
                 <button type="submit">Проверить</button>
             </fieldset>
         </form>

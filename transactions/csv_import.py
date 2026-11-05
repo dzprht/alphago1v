@@ -1,13 +1,10 @@
 import csv
 import hashlib
 import io
-import re
-from datetime import datetime, timezone
-from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 
-from transactions.models import Transaction
+from transactions.validation import validate_transaction
 
 
 CSV_COLUMNS = ["occurred_at", "amount", "direction", "recipient"]
@@ -44,39 +41,10 @@ def read_transactions_csv(file):
             occurred_at, amount, direction, recipient = [value.strip() for value in row]
 
             try:
-                occurred_at = datetime.fromisoformat(occurred_at)
-                if occurred_at.utcoffset() is None:
-                    raise ValueError
-                occurred_at = occurred_at.astimezone(timezone.utc)
-            except (ValueError, OverflowError) as error:
-                raise ValidationError(
-                    f"Строка {line} поле occurred_at: нужна дата ISO 8601 с часовым поясом"
-                ) from error
-
-            if not re.fullmatch(r"[0-9]{1,16}([.,][0-9]{1,2})?", amount):
-                raise ValidationError(
-                    f"Строка {line} поле amount: нужна сумма до 16 цифр и двух знаков копеек"
-                )
-            amount_kopecks = int(Decimal(amount.replace(",", ".")) * 100)
-            if amount_kopecks <= 0:
-                raise ValidationError(f"Строка {line} поле amount: сумма должна быть больше нуля")
-            if direction not in Transaction.Direction.values:
-                raise ValidationError(
-                    f"Строка {line} поле direction: допустимы incoming и outgoing"
-                )
-            if len(recipient) > 100 or any(ord(char) < 32 for char in recipient):
-                raise ValidationError(
-                    f"Строка {line} поле recipient: максимум 100 символов "
-                    "без переносов и управляющих знаков"
-                )
-            rows.append(
-                {
-                    "occurred_at": occurred_at,
-                    "amount_kopecks": amount_kopecks,
-                    "direction": direction,
-                    "recipient": recipient,
-                }
-            )
+                rows.append(validate_transaction(occurred_at, amount, direction, recipient))
+            except ValidationError as error:
+                field, messages = next(iter(error.message_dict.items()))
+                raise ValidationError(f"Строка {line} поле {field}: {messages[0]}") from error
     except csv.Error as error:
         raise ValidationError(
             f"Строка {reader.line_num} поле csv: неверная структура CSV"

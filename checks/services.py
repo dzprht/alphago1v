@@ -11,6 +11,7 @@ from checks.forms import (
     TrainingConsentForm,
 )
 from checks.models import Check, CheckFeedback, TrainingConsent
+from checks.media import extract_upload
 from transactions.models import TransactionImport
 from transactions.services import get_user_transactions
 
@@ -108,7 +109,7 @@ def finish_check(
     return check
 
 
-def run_check(user, kind, input_data, analyzer):
+def run_check(user, kind, input_data, analyzer, *, upload=None, media_model=None):
     # выполняет проверку и сохраняет ее результат или ошибку
     history = None
     if kind == Check.Kind.TRANSFER and user.is_authenticated:
@@ -117,7 +118,8 @@ def run_check(user, kind, input_data, analyzer):
             history = None
     check = create_check(user, kind, input_data)
     try:
-        result, snapshot = analyzer.analyze(kind, input_data, history, checked_at=check.created_at)
+        options = {"extraction": extract_upload(kind, upload, media_model)} if upload is not None else {}
+        result, snapshot = analyzer.analyze(kind, input_data, history, checked_at=check.created_at, **options)
     except Exception:
         logger.exception("Не удалось выполнить проверку %s", check.pk)
         return finish_check(check, error_message="Не удалось выполнить анализ. Попробуйте позже.")
@@ -125,6 +127,7 @@ def run_check(user, kind, input_data, analyzer):
         return finish_check(check, error_message="Не удалось распознать материал. Попробуйте другой файл.",
                             analyzer_version=result["analyzer_version"])
     return finish_check(check, result=result, analyzer_version=result["analyzer_version"],
+                        extracted_text=result.get("extracted_text", ""),
                         context_snapshot=snapshot if user.is_authenticated else {})
 
 

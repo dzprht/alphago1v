@@ -38,7 +38,7 @@ def read_rows(path, versions):
     rows, checksum = read_jsonl(path)
     values = {name: {"labels": [], "scores": [], "unknown": 0, "unavailable_score": 0}
               for name in sorted(THRESHOLD_NAMES)}
-    seen, cases, groups = set(), {}, set()
+    seen, cases, groups, domains = set(), {}, set(), set()
     for number, row in enumerate(rows, 1):
         error = f"Строка {number}: "
         if row.get("split") != "calibration" or row.get("prediction_origin") != "heldout" or row.get("fold") is not None:
@@ -47,6 +47,9 @@ def read_rows(path, versions):
             raise ValueError(error + "нужны case_id и group_id")
         if row.get("model_versions") != versions:
             raise ValueError(error + "версии моделей не совпадают с комплектом")
+        row_domains = row.get("domains", [])
+        if not isinstance(row_domains, list) or any(not isinstance(domain, str) or not domain for domain in row_domains):
+            raise ValueError(error + "domains должен содержать домены сценария")
         target = row.get("target_turn_id")
         if target is not None and (not isinstance(target, str) or not target.strip()):
             raise ValueError(error + "неверный target_turn_id")
@@ -56,6 +59,8 @@ def read_rows(path, versions):
         labels, scores = row.get("labels"), row.get("scores")
         if not isinstance(labels, dict) or not isinstance(scores, dict) or set(labels) != THRESHOLD_NAMES or set(scores) != THRESHOLD_NAMES:
             raise ValueError(error + "labels и scores должны содержать все восемь признаков")
+        if scores["url_score"] is not None and not row_domains:
+            raise ValueError(error + "для оценки URL нужны домены сценария")
         for name in values:
             label, score = labels[name], scores[name]
             if label is not None and (type(label) is not int or label not in (0, 1)):
@@ -72,7 +77,9 @@ def read_rows(path, versions):
         seen.add(key)
         cases[row["case_id"]] = row["group_id"]
         groups.add(row["group_id"])
-    return values, {"sha256": checksum, "rows": len(rows), "case_ids": sorted(cases), "group_ids": sorted(groups)}
+        domains.update(row_domains)
+    return values, {"sha256": checksum, "rows": len(rows), "case_ids": sorted(cases),
+                    "group_ids": sorted(groups), "domains": sorted(domains)}
 
 
 def calibrate(values):
@@ -101,16 +108,18 @@ def main():
         if output.exists():
             raise ValueError("Файл результата уже существует")
         manifests = {name: json.loads((args.model_dir / name / "manifest.json").read_text(encoding="utf-8"))
-                     for name in ("text", "url", "risk")}
+                     for name in ("text", "url")}
         versions = {name: manifest["analyzer_version"] for name, manifest in manifests.items()}
         values, info = read_rows(args.scores, versions)
-        training = manifests["risk"].get("training", {})
-        if not isinstance(training.get("train"), dict) or "group_ids" not in training["train"]:
-            raise ValueError("У дерева отсутствуют группы обучения для проверки независимости calibration")
-        for split in ("train", "validation"):
-            part = training.get(split)
-            if part and (set(part["group_ids"]) & set(info["group_ids"]) or set(part["case_ids"]) & set(info["case_ids"])):
-                raise ValueError("Calibration пересекается с обучением или validation дерева")
+        for name, manifest in manifests.items():
+            training = manifest.get("training", {})
+            for source, target in (("selected_group_ids", "group_ids"), ("selected_case_ids", "case_ids"),
+                                   ("selected_domains", "domains")):
+                selected = training.get(source)
+                if not isinstance(selected, list) or any(not isinstance(value, str) for value in selected):
+                    raise ValueError(f"У модели {name} отсутствует {source} для проверки независимости calibration")
+                if set(selected) & set(info[target]):
+                    raise ValueError(f"Calibration пересекается с обучением модели {name}")
         thresholds, metrics = calibrate(values)
         content = {"versions": versions, "thresholds": thresholds, "metrics": metrics, "source": info,
                    "selection": "maximum F1 then higher threshold using exact count comparison"}

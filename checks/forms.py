@@ -1,9 +1,15 @@
 from decimal import Decimal
+from io import BytesIO
+import wave
 
 from django import forms
 from django.core.files import File
 from django.core.validators import URLValidator
+from PIL import Image, UnidentifiedImageError
 
+from checks.media_limits import (
+    MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, SAMPLE_RATE,
+)
 from checks.models import Check, CheckFeedback
 
 
@@ -45,26 +51,74 @@ class URLCheckForm(CheckForm):
     message = forms.CharField(
         label="Сопроводительное сообщение", required=False, widget=forms.Textarea
     )
-    expected_site = forms.CharField(label="Ожидаемый сайт или организация", required=False)
+    expected_site = forms.CharField(
+        label="Ожидаемый сайт или организация", required=False,
+        widget=forms.TextInput(attrs={"list": "expected-organizations"}),
+        help_text="Выберите организацию или введите ее название или адрес сайта. "
+                  "Совпадение домена не подтверждает личность отправителя.",
+    )
     field_order = ["url", "message", "expected_site", "context"]
 
 
 class AudioCheckForm(CheckForm):
     kind = Check.Kind.AUDIO
-    audio = forms.FileField(label="Аудиозапись")
-    participants = forms.CharField(
-        label="Кто участвует в разговоре", required=False, widget=forms.Textarea
+    audio = forms.FileField(
+        label="Аудиозапись",
+        widget=forms.ClearableFileInput(attrs={"accept": ".wav,audio/wav"}),
+        help_text="WAV PCM 16 бит, 16000 Гц, моно или стерео. До 60 секунд и 4 МиБ. "
+                  "Участники определяются автоматически.",
     )
-    field_order = ["audio", "participants", "context"]
+    field_order = ["audio", "context"]
+
+    def clean_audio(self):
+        # проверяет формат длительность и целостность записи
+        upload = self.cleaned_data["audio"]
+        if upload.size > MAX_AUDIO_BYTES:
+            raise forms.ValidationError("Аудиозапись должна быть не больше 4 МиБ")
+        try:
+            with wave.open(upload, "rb") as audio:
+                channels, frames = audio.getnchannels(), audio.getnframes()
+                if (channels not in (1, 2) or audio.getsampwidth() != 2
+                        or audio.getframerate() != SAMPLE_RATE or audio.getcomptype() != "NONE"):
+                    raise forms.ValidationError("Нужен WAV PCM 16 бит 16000 Гц с одним или двумя каналами")
+                if not 0 < frames <= MAX_AUDIO_SECONDS * SAMPLE_RATE:
+                    raise forms.ValidationError("Запись должна быть непустой и длиться не больше 60 секунд")
+                if len(audio.readframes(frames)) != frames * channels * 2:
+                    raise forms.ValidationError("Аудиозапись обрезана или повреждена")
+        except (wave.Error, EOFError, OSError):
+            raise forms.ValidationError("Не удалось прочитать WAV запись") from None
+        finally:
+            upload.seek(0)
+        return upload
 
 
 class ScreenshotCheckForm(CheckForm):
     kind = Check.Kind.SCREENSHOT
-    image = forms.ImageField(label="Скриншот переписки")
-    own_messages = forms.CharField(
-        label="Какие реплики принадлежат вам", required=False, widget=forms.Textarea
+    image = forms.FileField(
+        label="Скриншот переписки",
+        widget=forms.ClearableFileInput(attrs={"accept": ".png,.jpg,.jpeg,image/png,image/jpeg"}),
+        help_text="PNG или JPEG, одно изображение, до 5 МиБ и 4 миллионов пикселей. "
+                  "Стороны переписки определяются автоматически.",
     )
-    field_order = ["image", "own_messages", "context"]
+    field_order = ["image", "context"]
+
+    def clean_image(self):
+        # проверяет формат размер и содержимое изображения
+        upload = self.cleaned_data["image"]
+        if upload.size > MAX_IMAGE_BYTES:
+            raise forms.ValidationError("Изображение должно быть не больше 5 МиБ")
+        try:
+            with Image.open(BytesIO(upload.read())) as image:
+                if image.format not in ("PNG", "JPEG") or getattr(image, "n_frames", 1) != 1:
+                    raise forms.ValidationError("Нужно одно изображение PNG или JPEG без анимации")
+                if image.width * image.height > MAX_IMAGE_PIXELS:
+                    raise forms.ValidationError("Изображение должно содержать не больше 4 миллионов пикселей")
+                image.load()
+        except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+            raise forms.ValidationError("Не удалось прочитать изображение PNG или JPEG") from None
+        finally:
+            upload.seek(0)
+        return upload
 
 
 class TransferCheckForm(CheckForm):

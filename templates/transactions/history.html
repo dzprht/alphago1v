@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}История операций — Альфа Защита{% endblock %}
 {% block content %}
 <div class="page-heading"><p class="eyebrow">ЛИЧНЫЕ ДАННЫЕ</p><h1>История операций</h1><p>Загрузите свою историю, чтобы учитывать привычные суммы и получателей при проверке перевода.</p></div>
@@ -11,10 +12,41 @@
     <div class="notice notice--warning">Новая загрузка полностью заменит прежнюю историю операций. При ошибке файла старые данные сохранятся.</div>
     <form method="post" action="{% url 'transactions:history' %}" enctype="multipart/form-data">
         {% csrf_token %}
+        <input type="hidden" name="action" value="csv">
         {% include "includes/form_fields.html" %}
         <button type="submit">Загрузить и заменить историю</button>
     </form>
 </section>
+<section class="panel" id="manual-entry">
+    <h2>Ввести операции вручную</h2>
+    <p class="muted">Добавьте до {{ max_manual_rows }} операций. Дата и время указываются по Москве. Обозначение контрагента должно совпадать с тем, которое вы используете при проверке перевода.</p>
+    <div class="notice notice--warning">Сохранение полностью заменит прежнюю историю введенными строками. При ошибке старые данные сохранятся. Чтобы не сохранять строку, отметьте «Удалить».</div>
+    <form method="post" action="{% url 'transactions:history' %}#manual-entry" id="manual-history" data-max-rows="{{ max_manual_rows }}">
+        {% csrf_token %}
+        {{ manual_forms.management_form }}
+        {{ manual_forms.non_form_errors }}
+        <div id="manual-rows">
+            {% for row in manual_forms %}
+            <fieldset class="manual-row">
+                <legend>Операция {{ forloop.counter }}</legend>
+                {% include "includes/form_fields.html" with form=row %}
+            </fieldset>
+            {% endfor %}
+        </div>
+        <p id="manual-limit" role="status"></p>
+        <div class="actions">
+            <button class="button--secondary" type="submit" name="action" value="add_row" id="add-row" formnovalidate>Добавить строку</button>
+            <button type="submit" name="action" value="manual">Сохранить и заменить историю</button>
+        </div>
+    </form>
+    <template id="manual-empty-row">
+        <fieldset class="manual-row">
+            <legend>Новая операция</legend>
+            {% include "includes/form_fields.html" with form=manual_forms.empty_form %}
+        </fieldset>
+    </template>
+</section>
+<script src="{% static 'js/transactions.js' %}" defer></script>
 <section class="panel">
     <h2>Загруженные операции</h2>
     <p class="muted">Операций в истории: {{ transactions|length }}</p>
